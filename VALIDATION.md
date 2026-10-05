@@ -29,6 +29,8 @@ experimental exports and must never be published.
 | `tests/browser.mjs` (headless Chrome) | Exported site starts in the browser; SKKU CSV loads (8,629 observations); Example comparison renders the interactive plot; downloads of selected rows, summary, figure PDF/PNG, saved view and AUC CSV; paired-date example renders both plots and exports the paired CSV (checked to be N2.thaw vs N2.therm) and paired PDF; SKKU + JHU together; JHU only; back to empty; no JavaScript errors, no R errors, no non-GET requests to any external host | PASS |
 | `tests/compare_browser.R` | Files downloaded from the browser match desktop R: observation IDs, survival %, summary curve/mean/SE, all-selected AUC (tolerance 1e-10) | PASS (7 expectations) |
 | Separate-repository export | Only the files listed in README “Publish to GitHub Pages” copied to a clean folder; `build.R --export-only` run as the workflow does | PASS; identical `app.json` and identical package binaries |
+| GitHub Actions workflow | First run of `pages.yml` in [hoyonh/thermotolerance-explorer](https://github.com/hoyonh/thermotolerance-explorer) ([run 37350695905](https://github.com/hoyonh/thermotolerance-explorer/actions/runs/37350695905), Ubuntu 24.04 runner): package install, export, audit, Pages deploy | PASS |
+| Live site | https://hoyonh.github.io/thermotolerance-explorer/ serves an `app.json` identical to the local build and the same 38 package binaries; no CSV present; `tests/browser.mjs` rerun against the live URL; uploads confirmed to be answered by the in-browser service worker, with no request leaving for any other host | PASS |
 
 Environment: macOS 26.6.2; desktop R 4.5.2; webR R 4.6.0 (wasm32); shinylive R
 package 0.5.0; Shinylive assets 0.10.12; Chrome 154; Playwright 1.63.0; Node 26.
@@ -45,9 +47,9 @@ warnings. Treat each build as unvalidated until the checks above pass.
 
 ## Not covered / known limitations
 
-- **GitHub Actions workflow has not been run.** Its export step was reproduced
-  locally (last table row), but setup on the GitHub runner and deployment to
-  Pages are untested until the first workflow run.
+- The workflow runner is pinned to `ubuntu-24.04`, the image the passing run
+  used. Changing it, or the R/action versions, needs a new run and a recheck of
+  the live site.
 - Only Chrome on macOS was tested automatically. Safari, Firefox, Windows and
   meeting-room computers should be checked by hand once (load a CSV, plot, one
   download).
