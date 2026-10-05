@@ -1,0 +1,49 @@
+# Use this workflow in a SEPARATE repository containing only this folder.
+name: Publish browser explorer
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+          use-public-rspm: true
+      # shinylive reads each app package's installed DESCRIPTION to choose WebAssembly
+      # binaries, so the app's packages must be installed here, not only the exporter.
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            shinylive@0.5.0
+            any::shiny
+            any::ggplot2
+            any::plotly
+            any::htmltools
+            any::jsonlite
+      - name: Build from allowlisted generated app
+        run: Rscript --vanilla build.R --export-only
+      - name: Audit publication inputs
+        run: python3 audit.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

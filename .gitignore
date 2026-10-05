@@ -1,0 +1,8 @@
+library/
+site/
+tools/node_modules/
+tests/artifacts/
+*.csv
+*.rds
+*.RData
+.DS_Store
