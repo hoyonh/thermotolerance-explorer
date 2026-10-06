@@ -47,8 +47,11 @@ resources and a script). That baseline was not rewritten.
 load by intercepting the GitHub request. A real click currently returns GitHub's
 404, which the page can read, and shows the “not public yet” message.
 
-The historical deployment and Safari results below refer to the earlier
-published build; they do not validate this update until it is deployed.
+This update was deployed in [run 37416316328](https://github.com/hoyonh/thermotolerance-explorer/actions/runs/37416316328)
+(commit `140b5d9`, Ubuntu 24.04). The live site serves an `app.json` identical to the tested
+build; `tests/browser.mjs` passed against the live URL (defaults, tabs, both manuscript-button
+paths, exports); a real click on the live button shows the “not public yet” message; and the
+Safari notice still appears in WebKit.
 
 ## Results (2026-10-06)
 
