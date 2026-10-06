@@ -60,4 +60,21 @@ th { color:#54706d; font-weight:650; }
 @media(max-width:1000px) { .container-fluid { padding:0 16px; } .workspace { grid-template-columns:235px minmax(0,1fr); gap:15px; } .plot-controls { grid-template-columns:repeat(2,minmax(0,1fr)); } .metric { padding:14px; } .card-heading { display:block; } .card-heading .hint { display:block; margin-top:8px; } }
 @media(max-width:720px) { .workspace { display:block; } .filters { position:static; max-height:none; margin-bottom:20px; } .metrics { gap:7px; } .metric { padding:12px 9px; } .metric-value { font-size:23px; } .metric-label { font-size:9px; } .local-badge { display:none; } h1 { font-size:26px; } .card { padding:14px; } .footer span { display:none; } }
 
-.file-card{margin:24px auto;max-width:1500px;padding:24px}.file-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}.file-card .shiny-input-container{width:100%}@media(max-width:700px){.file-grid{grid-template-columns:1fr}}
+/* Browser-only additions, appended to the shared style.css by prepare.py. */
+.file-card { margin: 0 0 24px; padding: 24px 26px 20px; }
+.file-card h2 { margin-bottom: 6px; }
+.file-card > p:not(.hint) { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0 0 18px; }
+.file-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px; }
+.file-grid > div { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.file-card .shiny-input-container { flex: 1; width: 100%; min-width: 0; margin-bottom: 0; }
+/* Align Remove with the file field: skip the label line above the field. */
+.file-grid > div > .btn { margin-top: 25px; height: 34px; white-space: nowrap; }
+.file-card .input-group .btn { height: 34px; }
+.file-card .form-control[readonly] { background: #f7f9f8; }
+/* Shiny reserves a 20px progress bar under each file field; keep it as a slim line. */
+.file-card .shiny-file-input-progress { height: 3px; margin: 6px 0 0; background: transparent; box-shadow: none; }
+.file-card .shiny-file-input-progress .progress-bar { font-size: 0; background: var(--teal); }
+#file_status { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; }
+.file-card .hint { margin: 4px 0 0; }
+.browser-unsupported { margin: 4px 0 18px; font-size: 12px; }
+@media (max-width: 700px) { .file-grid { grid-template-columns: 1fr; } }

@@ -21,7 +21,7 @@ paired_date_ui <- function(id, cutoff) {
     uiOutput(ns("coverage")),
     tabsetPanel(id = ns("tab"),
       tabPanel("Across dates", uiOutput(ns("period_message")),
-        plotlyOutput(ns("absolute"), height = "340px"), plotlyOutput(ns("difference"), height = "340px"),
+        plotlyOutput(ns("absolute"), height = "380px"), plotlyOutput(ns("difference"), height = "380px"),
         tableOutput(ns("period_table")),
         p(class = "hint", "Each point uses only matched observations at the chosen hour. Average observations within each group and matching block, average blocks within a date, then give dates equal weight in each period. A positive gap means the comparison survived better. SE describes variation among date-level gaps; no significance test is performed.")),
       tabPanel("Paired curves", textOutput(ns("page_count")), uiOutput(ns("curve_container")),
@@ -124,7 +124,10 @@ paired_date_server <- function(id, data, default_cutoff) {
       p(class = "paired-change", sprintf("Recent − historic: reference %+.1f pp · comparison %+.1f pp · paired gap %+.1f pp.",
         r$reference_mean - h$reference_mean, r$comparison_mean - h$comparison_mean, r$difference_pp - h$difference_pp))
     })
-    widget <- function(p) config(ggplotly(p, tooltip = "text"), displaylogo = FALSE)
+    # Anchor the legend to the figure's bottom edge so it clears the x-axis title at any plot height.
+    widget <- function(p) config(layout(ggplotly(p, tooltip = "text"),
+      legend = list(orientation = "h", x = 0, xanchor = "left", yref = "container", y = 0, yanchor = "bottom"),
+      margin = list(b = 95)), displaylogo = FALSE)
     output$absolute <- renderPlotly({ require_daily(); widget(paired_trend_plot(daily())) })
     output$difference <- renderPlotly({ require_daily(); widget(paired_trend_plot(daily(), TRUE)) })
     output$curve_container <- renderUI(plotlyOutput(session$ns("curves"), height = paste0(max(350, ceiling(min(12, length(panel_names())) / 3) * 220 + 110), "px")))

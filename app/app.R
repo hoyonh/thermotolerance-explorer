@@ -102,7 +102,7 @@ ui <- function(request) {
     ),
     ),
     div(class = "footer", "THERMOTOLERANCE EXPLORER", span("Local data · traceable observations · reproducible views"))
-  ), htmltools::findDependencies(htmltools::as.tags(plotly::plot_ly(x = numeric(), y = numeric(), type = "scatter", mode = "markers"))))
+  ), htmltools::findDependencies(htmltools::as.tags(plotly::plot_ly(x = numeric(), y = numeric(), type = "scatter", mode = "markers"))), append = TRUE)
 
 }
 
