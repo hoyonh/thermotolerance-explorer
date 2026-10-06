@@ -144,3 +144,13 @@ summarise_curves <- function(d, unit = "plate") {
   result <- do.call(rbind, result)
   result[order(result$panel, result$curve, result$hours), , drop = FALSE]
 }
+
+# Default filter selections for a dataset: 20°C, OP50-1, standard configuration and
+# synchronization. JHU legacy data is entirely OP50, so OP50 is added when JHU is among
+# the selected sources. A default absent from the data is left blank (all).
+default_filter_selection <- function(d, sources = unique(d$source)) {
+  wanted <- list(culture = "20°C", bacteria = c("OP50-1", if ("JHU" %in% sources) "OP50"),
+                 config = "standard", sync = "standard")
+  in_sources <- d$source %in% sources
+  Map(function(values, field) intersect(values, d[[field]][in_sources]), wanted, names(wanted))
+}

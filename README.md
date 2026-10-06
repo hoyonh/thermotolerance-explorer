@@ -1,17 +1,21 @@
 # Thermotolerance Explorer — browser version
 
 This is a separate Shinylive build of the existing explorer. R runs in the
-browser. The local/server app in `../thermotolerance_explorer` is unchanged.
+browser. Analysis code and filter defaults are shared with the local/server app.
 
 ## Everyday use
 
-1. Open the website (or the local preview below).
+1. Open [the explorer](https://hoyonh.github.io/thermotolerance-explorer/) (or the local preview below).
 2. Choose your **SKKU CSV**. Optionally choose the **JHU legacy CSV** too.
 3. Use **Example comparison** for the familiar SKKU default, or choose filters.
 4. Download plots, selected data, AUC/pairing results, or a saved-view JSON.
 
-Selecting a replacement file resets filters and manual exclusions so row-based
-exclusions are not silently carried over to changed data. The other loaded
+Whenever the loaded data changes (a file is chosen, replaced or removed), filters
+reset to the defaults: 20°C culture, OP50-1 diet, standard configuration and
+standard synchronization, with OP50 added while the JHU file (all OP50) is
+loaded. Defaults missing from the data are left blank (all). Manual exclusions
+are cleared so row-based exclusions are not silently carried over to changed
+data. **Clear filters** still selects everything. The other loaded
 source stays available. A JHU-only session is also supported. Invalid files show
 an error and leave the last valid dataset in place.
 
@@ -20,7 +24,30 @@ restart is needed. A browser refresh clears the loaded files; select them again.
 Saved-view JSON files store settings, not data. Load your CSVs before restoring a
 view. Fingerprint warnings identify changed or missing source files.
 
+## Manuscript dataset
+
+**Load manuscript dataset** (under the file pickers) loads `data/phenotypes/thermotolerance.csv`
+from `hoyonh/tgf-beta-thermotolerance-manuscript` as the SKKU file. It is pinned to commit
+`d6cc0ba` (the last change to that CSV), so it always loads the same data even if the
+repository changes later. The browser fetches the file directly from GitHub; the bytes are
+read exactly as a downloaded copy, so saved views match either way. No CSV is stored in this
+site or repository.
+
+This works only once the manuscript repository is public. Until then the button explains
+that, and you can load the file by hand:
+
+1. Sign into GitHub with access to the private manuscript repository.
+2. Open [thermotolerance.csv](https://github.com/hoyonh/tgf-beta-thermotolerance-manuscript/blob/d6cc0bad1f24a8d96149c7c76753d9c150a877b4/data/phenotypes/thermotolerance.csv) and click **Download raw file**.
+3. In the explorer, click **Choose CSV** under **SKKU CSV** and select the downloaded file.
+
+The file already uses the SKKU columns; its raw `OP50` values use the existing SKKU
+normalization to `OP50-1`. It replaces the SKKU file for that session. To point the button
+at a newer version (for example a release tag), change the commit in `prepare.py` (two
+links), rebuild, validate and republish. The CSV must not be committed to the public app repo.
+
 ## Privacy and access
+
+### Data handling
 
 No experimental CSVs are bundled with this site. File selection is handled by
 Shinylive inside the browser; the application does not send selected data to a
@@ -77,8 +104,8 @@ this folder is a local build dependency directory and must not be published.
 
 ## Publish to GitHub Pages
 
-Nothing has been published automatically. Use a **separate repository** containing
-only these items from this folder:
+The live app uses the separate `hoyonh/thermotolerance-explorer` repository,
+containing only these publication files from this folder:
 
 - `app/`
 - `source-manifest.json`

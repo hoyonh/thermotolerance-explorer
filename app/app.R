@@ -23,6 +23,7 @@ ui <- function(request) {
   multi <- function(id, label, selected = NULL) selectizeInput(id, label, choices_for(id), selected = selected, multiple = TRUE,
     options = list(placeholder = "All — type to filter", plugins = list("remove_button"), maxOptions = 1000))
   date_limits <- browser_dates(all_data)
+  start <- default_filter_selection(all_data, "SKKU")
   htmltools::attachDependencies(fluidPage(
     tags$head(tags$title("Thermotolerance Explorer"),
       
@@ -35,8 +36,16 @@ ui <- function(request) {
       div(class = "file-grid",
         div(fileInput("csv_SKKU", "SKKU CSV", accept = ".csv", buttonLabel = "Choose CSV"), actionButton("remove_SKKU", "Remove SKKU")),
         div(fileInput("csv_JHU", "JHU legacy CSV (optional)", accept = ".csv", buttonLabel = "Choose CSV"), actionButton("remove_JHU", "Remove JHU"))),
+      div(class = "manuscript-row",
+        tags$button(id = "load_manuscript", type = "button", class = "btn btn-default",
+          `data-url` = "https://raw.githubusercontent.com/hoyonh/tgf-beta-thermotolerance-manuscript/d6cc0bad1f24a8d96149c7c76753d9c150a877b4/data/phenotypes/thermotolerance.csv",
+          `data-name` = "thermotolerance.csv (manuscript, d6cc0ba)", "Load manuscript dataset"),
+        span(class = "hint", "Fixed version d6cc0ba from GitHub, loaded as the SKKU file. Until the repository is public, ",
+          tags$a("open the CSV on GitHub", href = "https://github.com/hoyonh/tgf-beta-thermotolerance-manuscript/blob/d6cc0bad1f24a8d96149c7c76753d9c150a877b4/data/phenotypes/thermotolerance.csv", target = "_blank", rel = "noopener noreferrer"),
+          " (sign-in required), download it, and choose it above."),
+        span(id = "manuscript_message", class = "manuscript-message", role = "status")),
       textOutput("file_status"),
-      p(class = "hint", "Selecting a replacement resets filters and manual exclusions. To update data, choose the newer CSV. Files are not saved by the app.")),
+      p(class = "hint", "Loading or replacing a file resets filters to the defaults (20°C, OP50-1, standard configuration and synchronization; OP50 too when JHU is loaded) and clears manual exclusions. To update data, choose the newer CSV. Files are not saved by the app.")),
     conditionalPanel("output.has_data", div(class = "workspace",
       div(class = "filters",
         div(class = "section-title", "Build a comparison"),
@@ -49,8 +58,8 @@ ui <- function(request) {
           p(class = "hint", "Cutoffs must increase. Each cutoff starts the next period; dates before the first and after the last remain included.")),
         checkboxGroupInput("sources", "Data sources", c("SKKU · 2024–2026" = "SKKU", "JHU · legacy" = "JHU"), selected = "SKKU"),
         multi("genotype", "Genotype", c("wild type", "sma-9(wk55)")), multi("strain", "Strain"),
-        multi("culture", "Culture temperature", "20°C"), multi("bacteria", "Bacterial diet", "OP50-1"),
-        multi("config", "Experimental configuration", "standard"), multi("sync", "Synchronization"),
+        multi("culture", "Culture temperature", start$culture), multi("bacteria", "Bacterial diet", start$bacteria),
+        multi("config", "Experimental configuration", start$config), multi("sync", "Synchronization", start$sync),
         tags$details(tags$summary("Dates, hours & experiments"),
           dateRangeInput("dates", "Assay dates", start = date_limits[1], end = date_limits[2], min = date_limits[1], max = date_limits[2]),
           checkboxInput("undated", "Include undated observations", FALSE),
@@ -299,8 +308,10 @@ server <- function(input, output, session) {
     excluded(character()); selected(NULL)
     d <- fresh$data
     updateCheckboxGroupInput(session, "sources", choices = setNames(names(next_parts), names(next_parts)), selected = names(next_parts))
+    start <- default_filter_selection(d, names(next_parts))
     for (field in c("genotype", "strain", "culture", "bacteria", "config", "sync")) {
-      updateSelectizeInput(session, field, choices = sort(unique(d[[field]])), selected = character())
+      updateSelectizeInput(session, field, choices = sort(unique(d[[field]])),
+        selected = if (field %in% names(start)) start[[field]] else character())
     }
     updateSelectizeInput(session, "runs", choices = sort(unique(d$run_id)), selected = character(), server = TRUE)
     dates <- browser_dates(d); hours <- browser_hours(d)
@@ -309,7 +320,7 @@ server <- function(input, output, session) {
     updateCheckboxInput(session, "undated", value = TRUE)
     updateNumericInput(session, "panel_page", value = 1)
     updateNumericInput(session, "row_page", value = 1)
-    showNotification("Files loaded. Filters and manual exclusions were reset; refine your comparison below.", type = "message")
+    showNotification("Data updated. Condition filters were reset to their defaults and manual exclusions were cleared. JHU uses OP50; unavailable defaults are left at All.", type = "message")
   }
   for (source in names(source_files)) local({
     key <- source
@@ -326,6 +337,19 @@ server <- function(input, output, session) {
       session$sendCustomMessage("clearFileInput", paste0("csv_", key))
     }, ignoreInit = TRUE)
   })
+  # Manuscript dataset fetched by browser.js: exact file bytes, loaded as the SKKU source.
+  observeEvent(input$manuscript_csv, {
+    m <- input$manuscript_csv
+    tryCatch({
+      path <- tempfile(fileext = ".csv")
+      writeBin(jsonlite::base64_dec(m$data), path)
+      parsed <- read_browser_csv(data.frame(name = m$name, size = file.size(path), datapath = path), "SKKU")
+      next_parts <- parts(); next_parts$SKKU <- parsed
+      apply_browser_snapshot(next_parts)
+      session$sendCustomMessage("clearFileInput", "csv_SKKU")
+      session$sendCustomMessage("manuscriptStatus", list(text = "Manuscript dataset loaded as SKKU.", error = FALSE))
+    }, error = function(e) session$sendCustomMessage("manuscriptStatus", list(text = paste("Could not read the manuscript CSV:", conditionMessage(e)), error = TRUE)))
+  }, ignoreInit = TRUE)
   output$save_view <- downloadHandler(filename = function() paste0("thermo-view-", Sys.Date(), ".json"), content = function(file) {
     s <- settings(); ps <- pairing$settings()
     if (length(ps$reference) == 1 && length(ps$comparison) == 1 && ps$reference != ps$comparison) s$pairing <- ps

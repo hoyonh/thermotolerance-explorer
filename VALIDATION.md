@@ -20,13 +20,43 @@ Rscript --vanilla thermotolerance_explorer_shinylive/tests/compare_browser.R
 a passing browser run. Outputs go to `tests/artifacts/`, which contains real
 experimental exports and must never be published.
 
+## Update: condition defaults and manuscript input (2026-10-06)
+
+The private manuscript CSV was checked against GitHub's blob SHA and loaded
+through the SKKU adapter without conversion (4,209 input rows). The CSV remains
+outside the published app. An optional first argument to `tests/verify.R` or
+`tests/browser.mjs` supplies its local path for repeat testing.
+
+Headless Chrome passed the full upload, plotting, export and removal checks,
+including manuscript loading and restoring all four condition defaults after
+replacing that file. Downloaded results passed all seven desktop parity checks.
+An intermediate run hit a webR export error while reactive updates were still
+settling; the test now waits for the app to become idle before exporting, and
+the complete rerun passed without JavaScript or R errors. The manuscript plot
+test narrows genotype to respect the existing 30-curve limit.
+
+The original desktop `verify.R` passed its functional checks. Its historical
+whole-project fingerprint assertion fails because seven pre-existing project
+files differ from the old baseline (R session files, source spreadsheets/CSV,
+resources and a script). That baseline was not rewritten.
+
+**Load manuscript dataset** fetches the CSV pinned to commit `d6cc0ba` from
+`raw.githubusercontent.com` and passes its exact bytes to the SKKU loader.
+`tests/verify.R` checks that path (same MD5 and file name as the source file), and
+`tests/browser.mjs` checks both the private-repository message and a successful
+load by intercepting the GitHub request. A real click currently returns GitHub's
+404, which the page can read, and shows the “not public yet” message.
+
+The historical deployment and Safari results below refer to the earlier
+published build; they do not validate this update until it is deployed.
+
 ## Results (2026-10-06)
 
 | Check | What it covers | Result |
 |---|---|---|
-| `tests/verify.R` (desktop R) | Uploaded CSVs normalize identically to the original loader (data and MD5 provenance); JHU defaults; empty/one-/two-source snapshots; rejection of missing columns, header-only, unusable and duplicate-column CSVs; app starts with no data; load, replace, reject (last good data kept), exclusion reset on replacement, removal; filtered values match `filter_data()`; PDF, PNG, CSV and saved-view exports | PASS (26 expectations) |
+| `tests/verify.R` (desktop R) | Uploaded CSVs normalize identically to the original loader (data and MD5 provenance); JHU defaults; default filter rules (20°C, OP50-1, standard configuration and synchronization; OP50 added with JHU; blank when absent); empty/one-/two-source snapshots; rejection of missing columns, header-only, unusable and duplicate-column CSVs; app starts with no data; load, replace, reject (last good data kept), exclusion reset on replacement, removal; filtered values match `filter_data()`; PDF, PNG, CSV and saved-view exports | PASS (33 expectations; more with the optional manuscript CSV) |
 | `audit.py` | Exported inputs equal the 11 allowlisted files byte-for-byte; no CSV anywhere in `site/`; no file ≥ 100 MB | PASS |
-| `tests/browser.mjs` (headless Chrome) | Exported site starts in the browser; SKKU CSV loads (8,629 observations); Example comparison renders the interactive plot; tabs switch (guards against Bootstrap being dropped from the page, which happened in an earlier build); downloads of selected rows, summary, figure PDF/PNG, saved view and AUC CSV; paired-date example renders both plots and exports the paired CSV (checked to be N2.thaw vs N2.therm) and paired PDF; SKKU + JHU together; JHU only; back to empty; no JavaScript errors, no R errors, no non-GET requests to any external host | PASS |
+| `tests/browser.mjs` (headless Chrome) | Exported site starts in the browser; SKKU CSV loads (5,637 observations under the condition defaults) with the default filters selected; Example comparison renders the interactive plot; tabs switch (guards against Bootstrap being dropped from the page, which happened in an earlier build); downloads of selected rows, summary, figure PDF/PNG, saved view and AUC CSV; paired-date example renders both plots and exports the paired CSV (checked to be N2.thaw vs N2.therm) and paired PDF; SKKU + JHU together (OP50 added to the diet default); **Load manuscript dataset** with GitHub intercepted: a 404 shows the “not public yet” message, and a served CSV loads as SKKU with the defaults applied; JHU only; back to empty; no JavaScript errors, no R errors, no non-GET requests to any external host | PASS |
 | `tests/compare_browser.R` | Files downloaded from the browser match desktop R: observation IDs, survival %, summary curve/mean/SE, all-selected AUC (tolerance 1e-10) | PASS (7 expectations) |
 | Separate-repository export | Only the files listed in README “Publish to GitHub Pages” copied to a clean folder; `build.R --export-only` run as the workflow does | PASS; identical `app.json` and identical package binaries |
 | GitHub Actions workflow | First run of `pages.yml` in [hoyonh/thermotolerance-explorer](https://github.com/hoyonh/thermotolerance-explorer) ([run 37350695905](https://github.com/hoyonh/thermotolerance-explorer/actions/runs/37350695905), Ubuntu 24.04 runner): package install, export, audit, Pages deploy | PASS |
@@ -57,6 +87,9 @@ warnings. Treat each build as unvalidated until the checks above pass.
   [posit-dev/r-shinylive#204](https://github.com/posit-dev/r-shinylive/issues/204),
   open. The app shows a notice instead. This includes every browser on iPhone and
   iPad. Re-test after a Shinylive/webR update.
+- The manuscript button has not loaded the real file from GitHub, because the
+  repository is still private. Once it is public, click it once on the live site
+  (or rerun `browser.mjs` with the interception removed).
 - Only Chrome on macOS was tested end to end. Edge (same engine as Chrome),
   Firefox, Windows and meeting-room computers should be checked by hand once
   (load a CSV, plot, one download).

@@ -74,6 +74,12 @@ th { color:#54706d; font-weight:650; }
 /* Shiny reserves a 20px progress bar under each file field; keep it as a slim line. */
 .file-card .shiny-file-input-progress { height: 3px; margin: 6px 0 0; background: transparent; box-shadow: none; }
 .file-card .shiny-file-input-progress .progress-bar { font-size: 0; background: var(--teal); }
+.manuscript-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 16px; }
+.manuscript-row .btn { height: 34px; white-space: nowrap; }
+.manuscript-row .hint { flex: 1 1 320px; margin: 0; }
+.manuscript-message { flex-basis: 100%; font-size: 12px; color: var(--teal); }
+.manuscript-message:empty { display: none; }
+.manuscript-message.is-error { color: #8a5a2b; }
 #file_status { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; }
 .file-card .hint { margin: 4px 0 0; }
 .browser-unsupported { margin: 4px 0 18px; font-size: 12px; }
