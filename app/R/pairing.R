@@ -52,7 +52,6 @@ pair_dates <- function(d, group, reference, comparison, cutoff,
     row$difference_pp <- row$comparison_mean - row$reference_mean
     row$n_reference <- nrow(a); row$n_comparison <- nrow(b)
     row$reference_rows <- collapse(a$observation_id); row$comparison_rows <- collapse(b$observation_id)
-    row$n_unresolved <- sum(z$ambiguous_plate)
     row$period <- ifelse(row$date >= as.Date(cutoff), "Recent", "Historic")
     row$recent_from <- as.Date(cutoff)
     row$same_experiment <- same_experiment

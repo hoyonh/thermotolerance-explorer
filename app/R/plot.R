@@ -7,8 +7,7 @@ make_curve_plot <- function(d, summary, mode, uncertainty, colors) {
     "<br>Ruptured / suicide / missing: ", d$Rup, " / ", d$suicide, " / ", d$missing,
     "<br>", esc(d$culture), " · ", esc(d$bacteria), " · ", esc(d$config),
     if ("time_period" %in% names(d)) paste0("<br>", esc(d$time_period)) else "",
-    "<br>", esc(d$observation_id), ifelse(nzchar(d$note), paste0("<br>Note: ", esc(d$note)), ""),
-    ifelse(d$ambiguous_plate, "<br>Plate identity unresolved; point shown without a plate line", ""))
+    "<br>", esc(d$observation_id), ifelse(nzchar(d$note), paste0("<br>Note: ", esc(d$note)), ""))
   summary$tip <- paste0("<b>", esc(summary$curve), "</b><br>", esc(summary$panel),
     "<br>", summary$hours, " h · mean ", round(summary$mean, 1), "%",
     "<br>", summary$n_observations, " observations · ", summary$n_runs, " recorded runs",
@@ -17,8 +16,12 @@ make_curve_plot <- function(d, summary, mode, uncertainty, colors) {
   summary$observation_id <- paste("mean", summary$panel, summary$curve, summary$hours, sep = "::")
   p <- ggplot2::ggplot()
   if (mode %in% c("replicates", "both")) {
-    lines <- d[!d$ambiguous_plate, , drop = FALSE]
-    if (nrow(lines)) p <- p + ggplot2::geom_line(data = lines, ggplot2::aes(x = hours, y = survival_pct, color = curve, group = interaction(plate_id, curve)), alpha = 0.22, linewidth = 0.5)
+    # One line per plate; repeat counts at the same hour are joined through their mean.
+    lines <- d[plate_identified(d) & is.finite(d$survival_pct), , drop = FALSE]
+    if (nrow(lines)) {
+      lines <- stats::aggregate(survival_pct ~ plate_id + curve + panel + hours, data = lines, FUN = mean)
+      p <- p + ggplot2::geom_line(data = lines, ggplot2::aes(x = hours, y = survival_pct, color = curve, group = interaction(plate_id, curve)), alpha = 0.22, linewidth = 0.5)
+    }
   }
   if (mode %in% c("points", "replicates", "both")) {
     p <- p + suppressWarnings(ggplot2::geom_point(data = d,
@@ -43,4 +46,19 @@ make_curve_plot <- function(d, summary, mode, uncertainty, colors) {
       strip.text = ggplot2::element_text(face = "bold", color = "#243b4a", size = 10),
       legend.position = "bottom", legend.text = ggplot2::element_text(size = 10),
       plot.margin = ggplot2::margin(12, 16, 8, 8), text = ggplot2::element_text(color = "#243b4a"))
+}
+
+# ggplotly can take a group's legend entry from its error-bar trace, which has no visible
+# line, leaving a blank swatch. Show each group's entry on its first non-error-bar trace.
+legend_from_marks <- function(p) {
+  p <- plotly::plotly_build(p)
+  seen <- character()
+  for (i in seq_along(p$x$data)) {
+    tr <- p$x$data[[i]]
+    group <- if (!is.null(tr$legendgroup)) tr$legendgroup else tr$name
+    if (is.null(group) || !nzchar(group) || !is.null(tr$error_y)) { p$x$data[[i]]$showlegend <- FALSE; next }
+    p$x$data[[i]]$showlegend <- !group %in% seen
+    seen <- c(seen, group)
+  }
+  p
 }

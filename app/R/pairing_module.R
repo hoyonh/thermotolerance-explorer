@@ -113,7 +113,6 @@ paired_date_server <- function(id, data, default_cutoff) {
       if (nrow(dates)) text <- paste0(text, " At ", input$hour, " h: ", sum(dates$period == "Historic"), " historic and ", sum(dates$period == "Recent"), " recent paired dates.")
       if (!nrow(r$pairs)) text <- paste0(text, " No shared observations under these rules. See Pairing audit; a missing match is not a zero difference.")
       if (isTRUE(input$allow_unknown)) text <- paste(text, "Unknown metadata are allowed to match; equivalence of those conditions cannot be checked.")
-      if (nrow(p) && any(p$n_unresolved > 0)) text <- paste(text, "Some contributing observations have unresolved plate identity; see the audit.")
       div(class = "notice", text)
     })
     output$period_message <- renderUI({

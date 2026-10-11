@@ -53,13 +53,31 @@ build; `tests/browser.mjs` passed against the live URL (defaults, tabs, both man
 paths, exports); a real click on the live button shows the “not public yet” message; and the
 Safari notice still appears in WebKit.
 
+## Update: plate identity clean-up and Row position (2026-10-12)
+
+The internal `ambiguous_plate` and `plate_unit` columns were removed (the second was unused).
+Several counts from one plate at the same hour are treated as independent counts: all enter
+every summary and the plate line passes through their mean. Observations without a date,
+experiment or row get no plate line, with no warning. The "unresolved plate identity" notice,
+inspector warning, pairing sentence and `n_unresolved*` export columns are gone; the metric
+is now "plates". A quiet list of repeat counts is in Methods & provenance (SKKU: 16 plate/hour
+pairs, 32 counts, matching the duplicates found before). **Row position** (`row_position`,
+labels "Row 01" … "Row 05.5", "Row not recorded") is available in Color / compare and
+Arrange panels, and therefore in the AUC table. A pre-existing legend fault was fixed: plotly
+could take a group's legend entry from its error-bar trace, leaving a blank swatch.
+
+Means, SE/SD, AUC and pairing results are unchanged: `compare_browser.R` parity passed, and the
+desktop `verify.R`, `verify_pairing.R` and `verify_auc.R` functional checks all passed (only the
+historical whole-project fingerprint checks fail, as before). Point clicks still open the
+inspector after the legend change.
+
 ## Results (2026-10-06)
 
 | Check | What it covers | Result |
 |---|---|---|
 | `tests/verify.R` (desktop R) | Uploaded CSVs normalize identically to the original loader (data and MD5 provenance); JHU defaults; default filter rules (20°C, OP50-1, standard configuration and synchronization; OP50 added with JHU; blank when absent); empty/one-/two-source snapshots; rejection of missing columns, header-only, unusable and duplicate-column CSVs; app starts with no data; load, replace, reject (last good data kept), exclusion reset on replacement, removal; filtered values match `filter_data()`; PDF, PNG, CSV and saved-view exports | PASS (33 expectations; more with the optional manuscript CSV) |
 | `audit.py` | Exported inputs equal the 11 allowlisted files byte-for-byte; no CSV anywhere in `site/`; no file ≥ 100 MB | PASS |
-| `tests/browser.mjs` (headless Chrome) | Exported site starts in the browser; SKKU CSV loads (5,637 observations under the condition defaults) with the default filters selected; Example comparison renders the interactive plot; tabs switch (guards against Bootstrap being dropped from the page, which happened in an earlier build); downloads of selected rows, summary, figure PDF/PNG, saved view and AUC CSV; paired-date example renders both plots and exports the paired CSV (checked to be N2.thaw vs N2.therm) and paired PDF; SKKU + JHU together (OP50 added to the diet default); **Load manuscript dataset** with GitHub intercepted: a 404 shows the “not public yet” message, and a served CSV loads as SKKU with the defaults applied; JHU only; back to empty; no JavaScript errors, no R errors, no non-GET requests to any external host | PASS |
+| `tests/browser.mjs` (headless Chrome) | Exported site starts in the browser; SKKU CSV loads (5,637 observations under the condition defaults) with the default filters selected; Example comparison renders the interactive plot; Color / compare → Row position gives one curve per row (Row 01 …); Methods & provenance lists repeat counts at the same plate and hour; tabs switch (guards against Bootstrap being dropped from the page, which happened in an earlier build); downloads of selected rows, summary, figure PDF/PNG, saved view and AUC CSV; paired-date example renders both plots and exports the paired CSV (checked to be N2.thaw vs N2.therm) and paired PDF; SKKU + JHU together (OP50 added to the diet default); **Load manuscript dataset** with GitHub intercepted: a 404 shows the “not public yet” message, and a served CSV loads as SKKU with the defaults applied; JHU only; back to empty; no JavaScript errors, no R errors, no non-GET requests to any external host | PASS |
 | `tests/compare_browser.R` | Files downloaded from the browser match desktop R: observation IDs, survival %, summary curve/mean/SE, all-selected AUC (tolerance 1e-10) | PASS (7 expectations) |
 | Separate-repository export | Only the files listed in README “Publish to GitHub Pages” copied to a clean folder; `build.R --export-only` run as the workflow does | PASS; identical `app.json` and identical package binaries |
 | GitHub Actions workflow | First run of `pages.yml` in [hoyonh/thermotolerance-explorer](https://github.com/hoyonh/thermotolerance-explorer) ([run 37350695905](https://github.com/hoyonh/thermotolerance-explorer/actions/runs/37350695905), Ubuntu 24.04 runner): package install, export, audit, Pages deploy | PASS |

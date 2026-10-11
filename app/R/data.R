@@ -77,12 +77,39 @@ normalise_data <- function(d, source) {
   value <- function(x) ifelse(is.na(x) | !nzchar(as.character(x)), "Not recorded", as.character(x))
   d$run_id <- paste(source, value(d$date), value(d$expt), sep = " / ")
   d$plate_id <- do.call(paste, c(lapply(d[c("run_id", "row", "raw_strain", "culture", "bacteria", "config", "sync")], value), sep = " | "))
-  time_key <- paste(d$plate_id, d$hours)
-  duplicate <- duplicated(time_key) | duplicated(time_key, fromLast = TRUE)
-  bad_plates <- unique(d$plate_id[duplicate | is.na(d$row) | is.na(d$expt) | is.na(d$date)])
-  d$ambiguous_plate <- d$plate_id %in% bad_plates
-  d$plate_unit <- ifelse(d$ambiguous_plate, paste0("unresolved:", d$observation_id), d$plate_id)
+  d$row_position <- row_label(d$row)
   d
+}
+
+# Plate row as a sortable grouping label: "Row 01", "Row 05.5", "Row not recorded".
+row_label <- function(row) {
+  ifelse(is.na(row), "Row not recorded",
+    ifelse(row == round(row), sprintf("Row %02d", as.integer(round(row))), sprintf("Row %04.1f", row)))
+}
+
+# An observation can be assigned to a plate only when its date, experiment and row are known.
+plate_identified <- function(d) {
+  missing <- function(x) is.na(x) | !nzchar(trimws(as.character(x)))
+  !(missing(d$date) | missing(d$expt) | missing(d$row))
+}
+
+# Plates with more than one count at the same hour. These are independent counts and all
+# enter the analysis; the list exists only for checking data entry.
+repeat_counts <- function(d) {
+  if (!nrow(d) || !"plate_id" %in% names(d)) return(data.frame())
+  d <- d[plate_identified(d), , drop = FALSE]
+  key <- paste(d$plate_id, d$hours)
+  d <- d[key %in% key[duplicated(key)], , drop = FALSE]
+  if (!nrow(d)) return(data.frame())
+  groups <- split(seq_len(nrow(d)), paste(d$plate_id, d$hours))
+  out <- do.call(rbind, lapply(groups, function(idx) {
+    z <- d[idx, , drop = FALSE]
+    data.frame(source = z$source[1], date = z$date[1], expt = z$expt[1], row = z$row[1], strain = z$strain[1],
+      hours = z$hours[1], counts = nrow(z), alive_dead = paste(paste0(z$alive, "/", z$dead), collapse = " + "),
+      notes = paste(unique(z$note[nzchar(z$note)]), collapse = "; "), stringsAsFactors = FALSE)
+  }))
+  rownames(out) <- NULL
+  out[order(out$source, out$date, out$expt, out$row, out$hours), , drop = FALSE]
 }
 
 load_data <- function(project_dir, data_dir = Sys.getenv("THERMO_DATA_DIR", "")) {
@@ -137,8 +164,7 @@ summarise_curves <- function(d, unit = "plate") {
     data.frame(panel = z$panel[1], curve = z$curve[1], hours = z$hours[1], mean = mean(v),
                sd = if (n > 1) sd(v) else NA_real_, se = if (n > 1) sd(v) / sqrt(n) else NA_real_,
                n_units = n, n_observations = nrow(z), n_runs = length(unique(z$run_id)),
-               n_resolved_plates = length(unique(z$plate_id[!z$ambiguous_plate])),
-               n_unresolved_observations = sum(z$ambiguous_plate), unit = unit,
+               n_plates = length(unique(z$plate_id[plate_identified(z)])), unit = unit,
                stringsAsFactors = FALSE)
   })
   result <- do.call(rbind, result)

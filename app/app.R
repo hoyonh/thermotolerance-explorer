@@ -13,8 +13,8 @@ source("R/browser_data.R", local = TRUE)
 source("R/browser_plots.R", local = TRUE)
 paired_trend_plot <- browser_paired_plot(paired_trend_plot)
 pairing_cutoff <- as.Date("2026-09-01")
-group_choices <- c("Genotype" = "genotype", "Strain" = "strain", "Bacterial diet" = "bacteria", "Culture temperature" = "culture", "Configuration" = "config", "Source" = "source", "Synchronization" = "sync")
-facet_choices <- c("Pooled view" = "none", "By experiment / date" = "run_id", "By date" = "date", "By culture temperature" = "culture", "By bacterial diet" = "bacteria", "By configuration" = "config", "By source" = "source")
+group_choices <- c("Genotype" = "genotype", "Strain" = "strain", "Bacterial diet" = "bacteria", "Culture temperature" = "culture", "Configuration" = "config", "Source" = "source", "Synchronization" = "sync", "Row position" = "row_position")
+facet_choices <- c("Pooled view" = "none", "By experiment / date" = "run_id", "By date" = "date", "By culture temperature" = "culture", "By bacterial diet" = "bacteria", "By configuration" = "config", "By source" = "source", "By row position" = "row_position")
 
 ui <- function(request) {
   initial <- empty_browser_snapshot()
@@ -104,7 +104,10 @@ ui <- function(request) {
             p("All sources: total across all five count categories must be at least 15. SKKU: exclude the exact note ‘10 total’. JHU: exclude IW938cuz_4G, notes matching room_temp_high_setup, donotuse, odd_result_all or special_N2, and temperature-shift strain annotations. The checkbox controls these rules; invalid or negative/non-integer counts, invalid times and zero denominators are always omitted."),
             h3("Labels and replicate identity"),
             p("SKKU diet labels follow the existing import convention: raw OP50 → OP50-1 and raw plain → OP50. CB1370-SNU → CB1370. Strain suffixes after a space are removed for display. JHU culture and two genotype spellings are normalized as in the existing loader. All original labels remain in raw_* export columns. Lab-confirmed JHU metadata: bacterial diet OP50, configuration standard, and synchronization standard; these annotations apply to all JHU observations. Missing source values remain ‘Not recorded’ in raw_* columns. N2, N2.therm and N2.thaw remain distinct strains."),
-            p("A candidate plate is source + date + experiment + row + raw strain + culture + diet + configuration + synchronization. Missing date/experiment/row or repeated time points make that plate identity unresolved. Those observations remain in summaries, but are not connected into plate curves or counted as resolved plates. No duplicates are silently removed."),
+            p("A plate is source + date + experiment + row + raw strain + culture + diet + configuration + synchronization. Several counts from one plate at the same hour are independent counts: each enters every summary, and the plate line passes through their mean. Observations without a date, experiment or row cannot be assigned to a plate; they are shown as points without a plate line and still enter every summary. Nothing is removed. Row position groups and panels use the recorded row (e.g. 5.5 for a plate placed between rows 5 and 6)."),
+            h3("Repeat counts at the same plate and hour"),
+            p(class = "hint", textOutput("repeat_count_text", inline = TRUE)),
+            tableOutput("repeat_counts"),
             h3("Reproducibility"),
             p("Source CSVs are selected locally and read when chosen. Choose a newer file to update; refreshing the page clears loaded data. Saved views contain filters, manual exclusions, plotting settings and source MD5 fingerprints. Reopening a view warns if the data changed; a view does not contain a data snapshot. Download Selected data CSV to preserve the included observations. This explorer performs descriptive analysis; it does not calculate significance tests."),
             verbatimTextOutput("provenance")))))
@@ -189,7 +192,7 @@ server <- function(input, output, session) {
     plotlyOutput("curves", height = paste0(max(570, ceiling(length(page_panels()) / 3) * 220 + 150), "px"))
   })
   output$curves <- renderPlotly({
-    p <- ggplotly(plot_object(), tooltip = "text", source = "thermo")
+    p <- legend_from_marks(ggplotly(plot_object(), tooltip = "text", source = "thermo"))
     p <- layout(p, legend = list(orientation = "h", y = -0.16), margin = list(b = 100), hovermode = "closest")
     p <- config(p, displaylogo = FALSE, toImageButtonOptions = list(format = "svg", filename = "thermotolerance_curves"))
     event_register(p, "plotly_click")
@@ -198,13 +201,12 @@ server <- function(input, output, session) {
     d <- filtered()
     metric <- function(n, label) div(class = "metric", div(class = "metric-value", format(n, big.mark = ",")), div(class = "metric-label", label))
     div(class = "metrics", metric(nrow(d), "observations"), metric(length(unique(d$run_id)), "recorded runs"),
-        metric(length(unique(d$plate_id[!d$ambiguous_plate])), "resolved plates"), metric(length(unique(d$genotype)), "genotypes"))
+        metric(length(unique(d$plate_id[plate_identified(d)])), "plates"), metric(length(unique(d$genotype)), "genotypes"))
   })
   output$data_notice <- renderUI({
     d <- filtered(); candidate <- filter_data(dataset()$data, settings(), apply_quality = FALSE)
     notes <- character()
     if (nrow(candidate) > nrow(d)) notes <- c(notes, paste(nrow(candidate) - nrow(d), "observations omitted by quality rules or manual exclusions."))
-    if (any(d$ambiguous_plate)) notes <- c(notes, paste(sum(d$ambiguous_plate), "observations have unresolved plate identity; shown as points, included in means."))
     mixed <- c("source", "culture", "bacteria", "config", "sync")
     mixed <- mixed[vapply(mixed, function(x) length(unique(d[[x]])) > 1 && !x %in% c(input$group, input$facet), logical(1))]
     if (length(mixed)) notes <- c(notes, paste("Pooled across:", paste(mixed, collapse = ", "), "— use filters or panels to separate these conditions."))
@@ -245,14 +247,22 @@ server <- function(input, output, session) {
       p(paste("Original strain:", row$raw_strain, "· original diet:", row$raw_bacteria)),
       p(paste("Source:", source_files[[row$source]], "· data row", row$source_row, "· experiment", row$expt, "· row", row$row)),
       p(paste("Note:", ifelse(nzchar(row$note), row$note, "—"))),
-      if (row$ambiguous_plate) p(class = "notice", "Plate identity is unresolved. The table lists observations sharing this candidate identifier; they may not be one plate."))
+      if (!plate_identified(row)) p(class = "hint", "Date, experiment or row not recorded, so this observation is not assigned to a plate."))
   })
   detail_columns <- c("observation_id", "date", "expt", "row", "hours", "strain", "genotype", "survival_pct", "alive", "dead", "Rup", "suicide", "missing", "note")
   output$plate_detail <- renderTable({
-    row <- selected_row(); req(nrow(row))
+    row <- selected_row(); req(nrow(row), plate_identified(row))
     d <- filtered(); d <- d[d$plate_id == row$plate_id, , drop = FALSE]
     format_table_dates(d[order(d$hours), detail_columns, drop = FALSE])
   }, digits = 2, striped = TRUE, spacing = "s", na = "—")
+  repeats <- reactive(repeat_counts(dataset()$data))
+  output$repeat_count_text <- renderText({
+    n <- nrow(repeats())
+    if (!n) "No plate has more than one count at the same hour in the loaded data."
+    else paste0(n, " plate/hour combinations in the loaded data have more than one count. All counts enter the analysis; this list is for checking data entry",
+      if (n > 200) " (first 200 shown)." else ".")
+  })
+  output$repeat_counts <- renderTable(format_table_dates(head(repeats(), 200)), digits = 2, striped = TRUE, spacing = "s", na = "—")
   observeEvent(input$exclude_point, {
     row <- selected_row()
     if (nrow(row)) excluded(unique(c(excluded(), row$observation_id))) else showNotification("Click an individual observation first.", type = "message")
