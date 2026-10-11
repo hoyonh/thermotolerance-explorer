@@ -71,6 +71,12 @@ desktop `verify.R`, `verify_pairing.R` and `verify_auc.R` functional checks all 
 historical whole-project fingerprint checks fail, as before). Point clicks still open the
 inspector after the legend change.
 
+Deployed in [run 38153273428](https://github.com/hoyonh/thermotolerance-explorer/actions/runs/38153273428)
+(commit `34c4b3a`, Ubuntu 24.04). The live site serves an `app.json` identical to the tested build;
+`tests/browser.mjs` passed against the live URL (defaults, Row position, repeat-count list, tabs,
+exports, both manuscript-button paths); a live point click opens the inspector; the real manuscript
+button still reports the private repository; the Safari notice still appears.
+
 ## Results (2026-10-06)
 
 | Check | What it covers | Result |
