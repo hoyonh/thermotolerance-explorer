@@ -74,6 +74,10 @@ synchronization and shared-date steps, and its paired-CSV poll now treats a fail
 yet ready (a transient failure was seen once while outputs re-rendered). All functional checks,
 `tests/verify.R`, `compare_browser.R` parity and `audit.py` passed locally.
 
+Deployed in [run 38343584179](https://github.com/hoyonh/thermotolerance-explorer/actions/runs/38343584179)
+(commit `4a105cd`, Ubuntu 24.04). The live site serves an `app.json` identical to the tested build,
+and `tests/browser.mjs` passed against the live URL, including the new steps.
+
 ## Update: plate identity clean-up and Row position (2026-10-12)
 
 The internal `ambiguous_plate` and `plate_unit` columns were removed (the second was unused).
