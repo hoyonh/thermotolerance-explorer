@@ -59,7 +59,10 @@ Under Assay dates, the sidebar lists each loaded source's first and last date an
 of undated observations, with a **Use full range** link that resets the fields to the loaded
 span. New `verify.R` tests; `tests/browser.mjs` types an out-of-range start, clicks the link and
 checks the first date returns. Layout checked by screenshot; `tests/verify.R`,
-`compare_browser.R` and `audit.py` passed.
+`compare_browser.R` and `audit.py` passed. Deployed in
+[run 38383034054](https://github.com/hoyonh/thermotolerance-explorer/actions/runs/38383034054)
+(commit `6a6dd94`); the live `app.json` is identical to the tested build and the live sidebar
+shows the coverage for both sources.
 
 ## Update: assay dates accept any typed date (2026-10-13)
 
