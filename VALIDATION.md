@@ -53,6 +53,14 @@ build; `tests/browser.mjs` passed against the live URL (defaults, tabs, both man
 paths, exports); a real click on the live button shows the “not public yet” message; and the
 Safari notice still appears in WebKit.
 
+## Update: no hidden settings (2026-10-13)
+
+Settings are no longer inside collapsed sections: "Dates, hours & experiments" in the sidebar
+and "Matching rules" in the paired-date panel are always shown, and **Dates compared** moved
+from the sidebar to the plot controls next to Color / compare. Only the AUC audit table (output,
+not settings) remains collapsible. Layout checked by screenshot; `tests/browser.mjs`,
+`tests/verify.R`, `compare_browser.R` and the desktop functional checks passed.
+
 ## Update: setting comparisons and date selection (2026-10-13)
 
 **Paired-date comparison** can compare by **Configuration** or **Synchronization** as well as
@@ -63,7 +71,7 @@ comparison matches configurations with their leading synchronization label remov
 standard vs bare/cfloor has no pairs (no shared dates); for example, `SS b-EPSK-Cu NGM-1` vs
 `SS s-NGM NGM-1` pairs on 7 dates and NS vs SS on 6.
 
-**Dates used for the compared groups** (sidebar) adds "Only dates shared by every group" and
+**Dates compared** (next to Color / compare above the plot) adds "Only dates shared by every group" and
 "Overlapping date range of all groups" for the Color / compare groups, applied to the whole view.
 On real data both keep exactly the same observations as `select_shared_dates()` and
 `select_date_range()` in `scripts/plot_functions.R` (N2.thaw vs N2.therm; N2 vs DHL107). Where
