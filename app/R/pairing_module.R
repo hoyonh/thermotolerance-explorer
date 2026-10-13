@@ -5,14 +5,15 @@ paired_date_ui <- function(id, cutoff) {
       actionButton(ns("example"), "Example: N2.thaw vs N2.therm")),
     p(class = "hint", "Compare contemporaneous groups first, then examine their difference over time. Uses the sidebar filters and exclusions."),
     div(class = "plot-controls",
-      selectInput(ns("dimension"), "Compare by", c("Strain / stock" = "strain", "Genotype" = "genotype")),
+      selectInput(ns("dimension"), "Compare by", c("Strain / stock" = "strain", "Genotype" = "genotype",
+        "Configuration" = "config", "Synchronization" = "sync")),
       selectizeInput(ns("reference"), "Reference", choices = NULL),
       selectizeInput(ns("comparison"), "Comparison", choices = NULL),
       dateInput(ns("cutoff"), "Recent period begins", value = cutoff),
       selectInput(ns("hour"), "Time point for date trends", choices = NULL),
       numericInput(ns("page"), "Curve panel page (12 per page)", 1, min = 1, step = 1)),
     tags$details(tags$summary("Matching rules"),
-      p(class = "hint", "Always match assay date, heat-exposure time, source, culture temperature, bacterial diet, configuration and synchronization. Genotype comparisons also keep the actual stock combinations separate across dates."),
+      p(class = "hint", "Always match assay date, heat-exposure time, source, culture temperature, bacterial diet, configuration and synchronization, except the setting being compared. Genotype comparisons also keep the actual stock combinations separate across dates. Configuration and synchronization comparisons pair the same strain/stock; a synchronization comparison matches configurations after removing their leading synchronization label (NS s-NGM NGM-1 pairs with SS s-NGM NGM-1)."),
       checkboxInput(ns("same_experiment"), "Also require the same experiment identifier", TRUE),
       checkboxInput(ns("separate_males"), "Keep male-labelled and other observations separate", TRUE),
       checkboxInput(ns("allow_unknown"), "Allow equal ‘Not recorded’ condition labels to match", FALSE),
@@ -34,17 +35,22 @@ paired_date_ui <- function(id, cutoff) {
       downloadButton(ns("period_csv"), "Period summary CSV"), downloadButton(ns("audit_csv"), "Pairing audit CSV")))
 }
 
-paired_date_server <- function(id, data, default_cutoff) {
+# `unfiltered()` returns the sidebar selection without its configuration and synchronization
+# filters. Configuration labels encode synchronization, so a comparison of either needs both lifted.
+paired_date_server <- function(id, data, default_cutoff, unfiltered = NULL) {
+  sidebar_data <- data
   shiny::moduleServer(id, function(input, output, session) {
     pending <- reactiveVal(NULL)
     valid_group <- reactive(input$dimension %||% "strain")
+    setting_group <- reactive(valid_group() %in% c("config", "sync") && !is.null(unfiltered))
+    data <- reactive(if (setting_group()) unfiltered() else sidebar_data())
     observeEvent(list(data(), valid_group()), {
       values <- sort(unique(as.character(data()[[valid_group()]])))
       target <- pending()
       restoring <- !is.null(target) && identical(valid_group(), target$dimension)
       ref <- if (restoring) target$reference else isolate(input$reference)
       cmp <- if (restoring) target$comparison else isolate(input$comparison)
-      if (!restoring && (length(ref) != 1 || is.na(ref) || !ref %in% values)) ref <- intersect(c("wild type", "N2.thaw", "N2"), values)[1]
+      if (!restoring && (length(ref) != 1 || is.na(ref) || !ref %in% values)) ref <- intersect(c("wild type", "N2.thaw", "N2", "standard"), values)[1]
       if (!length(ref) || is.na(ref)) ref <- head(values, 1)
       if (!restoring && (length(cmp) != 1 || !cmp %in% values || identical(cmp, ref))) cmp <- head(setdiff(values, ref), 1)
       updateSelectizeInput(session, "reference", choices = unique(c(values, ref)), selected = ref %||% character())
@@ -112,6 +118,7 @@ paired_date_server <- function(id, data, default_cutoff) {
         sum(a$pair_status == "Paired" & !chosen), " paired observations belong to other condition/stock combinations.")
       if (nrow(dates)) text <- paste0(text, " At ", input$hour, " h: ", sum(dates$period == "Historic"), " historic and ", sum(dates$period == "Recent"), " recent paired dates.")
       if (!nrow(r$pairs)) text <- paste0(text, " No shared observations under these rules. See Pairing audit; a missing match is not a zero difference.")
+      if (setting_group()) text <- paste(text, "The sidebar configuration and synchronization filters are not applied here, so every recorded setting is available.")
       if (isTRUE(input$allow_unknown)) text <- paste(text, "Unknown metadata are allowed to match; equivalence of those conditions cannot be checked.")
       div(class = "notice", text)
     })
@@ -142,7 +149,7 @@ paired_date_server <- function(id, data, default_cutoff) {
     output$audit_counts <- renderTable(as.data.frame(table(result()$audit$pair_status), responseName = "Observations"), striped = TRUE)
     output$unmatched <- renderTable({
       a <- result()$audit
-      format_table_dates(head(a[a$pair_status != "Paired", c("observation_id", "date", "hours", "strain", "expt", "culture", "bacteria", "config", "pair_status")], 100))
+      format_table_dates(head(a[a$pair_status != "Paired", c("observation_id", "date", "hours", "strain", "expt", "culture", "bacteria", "config", "sync", "pair_status")], 100))
     }, striped = TRUE, na = "—")
     output$daily_csv <- downloadHandler(filename = "paired_dates.csv", content = function(file) write.csv(daily(), file, row.names = FALSE, na = ""))
     output$blocks_csv <- downloadHandler(filename = "matched_blocks.csv", content = function(file) write.csv(selected_pairs(), file, row.names = FALSE, na = ""))
@@ -161,7 +168,7 @@ paired_date_server <- function(id, data, default_cutoff) {
       if (nrow(page_pairs())) print(paired_curve_plot(page_pairs()))
     })
     restore <- function(s) {
-      stopifnot(is.list(s), s$dimension %in% c("strain", "genotype"),
+      stopifnot(is.list(s), s$dimension %in% c("strain", "genotype", "config", "sync"),
         length(s$reference) == 1, length(s$comparison) == 1, s$reference != s$comparison,
         length(s$cutoff) == 1, !is.na(as.Date(s$cutoff)))
       pending(s)

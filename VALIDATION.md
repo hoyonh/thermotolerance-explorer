@@ -53,6 +53,27 @@ build; `tests/browser.mjs` passed against the live URL (defaults, tabs, both man
 paths, exports); a real click on the live button shows the “not public yet” message; and the
 Safari notice still appears in WebKit.
 
+## Update: setting comparisons and date selection (2026-10-13)
+
+**Paired-date comparison** can compare by **Configuration** or **Synchronization** as well as
+strain and genotype. The compared setting is not matched; all other conditions are, plus the same
+strain/stock. These modes ignore the sidebar configuration and synchronization filters (labels
+such as `NS s-NGM NGM-1` encode synchronization, so both must be lifted). A synchronization
+comparison matches configurations with their leading synchronization label removed. On SKKU data,
+standard vs bare/cfloor has no pairs (no shared dates); for example, `SS b-EPSK-Cu NGM-1` vs
+`SS s-NGM NGM-1` pairs on 7 dates and NS vs SS on 6.
+
+**Dates used for the compared groups** (sidebar) adds "Only dates shared by every group" and
+"Overlapping date range of all groups" for the Color / compare groups, applied to the whole view.
+On real data both keep exactly the same observations as `select_shared_dates()` and
+`select_date_range()` in `scripts/plot_functions.R` (N2.thaw vs N2.therm; N2 vs DHL107). Where
+ranges do not overlap, the app shows an empty view with a notice instead of stopping with an error.
+
+New unit tests in `verify_pairing.R` and `verify.R`; `tests/browser.mjs` gained configuration,
+synchronization and shared-date steps, and its paired-CSV poll now treats a failed fetch as not
+yet ready (a transient failure was seen once while outputs re-rendered). All functional checks,
+`tests/verify.R`, `compare_browser.R` parity and `audit.py` passed locally.
+
 ## Update: plate identity clean-up and Row position (2026-10-12)
 
 The internal `ambiguous_plate` and `plate_unit` columns were removed (the second was unused).

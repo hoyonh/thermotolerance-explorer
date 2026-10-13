@@ -63,6 +63,9 @@ ui <- function(request) {
         tags$details(tags$summary("Dates, hours & experiments"),
           dateRangeInput("dates", "Assay dates", start = date_limits[1], end = date_limits[2], min = date_limits[1], max = date_limits[2]),
           checkboxInput("undated", "Include undated observations", FALSE),
+          selectInput("date_selection", "Dates used for the compared groups", c("All dates in range" = "all",
+            "Only dates shared by every group" = "shared", "Overlapping date range of all groups" = "overlap")),
+          p(class = "hint", "Groups are the Color / compare groups. Shared dates keeps only assay dates on which every group was measured; the overlapping range keeps dates from the latest first date to the earliest last date of any group. Both drop undated observations."),
           sliderInput("hours", "Heat exposure (hours)", min = 0, max = 4, value = c(0, 4), step = 0.5),
           selectizeInput("runs", "Recorded runs", choices = NULL, multiple = TRUE, options = list(placeholder = "All recorded runs"))),
         checkboxInput("quality", "Apply existing analysis exclusions", TRUE),
@@ -133,7 +136,7 @@ server <- function(input, output, session) {
     list(sources = input$sources, genotype = input$genotype, strain = input$strain,
       culture = input$culture, bacteria = input$bacteria, config = input$config, sync = input$sync,
       dates = as.character(input$dates), hours = input$hours, runs = input$runs, undated = input$undated,
-      quality = input$quality, excluded = excluded(), group = input$group, facet = input$facet,
+      date_selection = input$date_selection %||% "all", quality = input$quality, excluded = excluded(), group = input$group, facet = input$facet,
       mode = input$mode, unit = input$unit, uncertainty = input$uncertainty, panel_page = input$panel_page,
       compare_periods = isTRUE(input$compare_periods), period_cutoff = cutoffs[1],
       period_count = period_count, period_cutoffs = cutoffs)
@@ -145,10 +148,17 @@ server <- function(input, output, session) {
       valid <- tryCatch({validate_period_cutoffs(s$period_cutoffs); TRUE}, error = function(e) FALSE)
       validate(need(valid, "Enter valid cutoff dates in strictly increasing order."))
     }
-    assign_time_period(filter_data(dataset()$data, s), s$compare_periods, s$period_cutoffs)
+    d <- select_group_dates(filter_data(dataset()$data, s), s$group, s$date_selection)
+    info <- attr(d, "date_selection")
+    d <- assign_time_period(d, s$compare_periods, s$period_cutoffs)
+    attr(d, "date_selection") <- info
+    d
   })
   auc <- auc_server("auc", filtered, reactive(input$group), reactive(input$unit))
-  pairing <- paired_date_server("paired", filtered, pairing_cutoff)
+  pairing <- paired_date_server("paired", filtered, pairing_cutoff, unfiltered = function() {
+    s <- settings(); s$config <- character(); s$sync <- character()
+    assign_time_period(select_group_dates(filter_data(dataset()$data, s), s$group, s$date_selection), s$compare_periods, s$period_cutoffs)
+  })
   observeEvent(pairing$example(), {
     req(nrow(dataset()$data) > 0)
     updateCheckboxGroupInput(session, "sources", selected = "SKKU")
@@ -206,7 +216,10 @@ server <- function(input, output, session) {
   output$data_notice <- renderUI({
     d <- filtered(); candidate <- filter_data(dataset()$data, settings(), apply_quality = FALSE)
     notes <- character()
-    if (nrow(candidate) > nrow(d)) notes <- c(notes, paste(nrow(candidate) - nrow(d), "observations omitted by quality rules or manual exclusions."))
+    info <- attr(d, "date_selection")
+    kept <- if (is.null(info)) nrow(d) else info$rows_before
+    if (nrow(candidate) > kept) notes <- c(notes, paste(nrow(candidate) - kept, "observations omitted by quality rules or manual exclusions."))
+    notes <- c(notes, describe_date_selection(info))
     mixed <- c("source", "culture", "bacteria", "config", "sync")
     mixed <- mixed[vapply(mixed, function(x) length(unique(d[[x]])) > 1 && !x %in% c(input$group, input$facet), logical(1))]
     if (length(mixed)) notes <- c(notes, paste("Pooled across:", paste(mixed, collapse = ", "), "— use filters or panels to separate these conditions."))
@@ -293,6 +306,7 @@ server <- function(input, output, session) {
     updateDateRangeInput(session, "dates", start = bounds[1], end = bounds[2])
     updateSliderInput(session, "hours", value = range(d$hours, na.rm = TRUE))
     updateCheckboxInput(session, "undated", value = !example)
+    updateSelectInput(session, "date_selection", selected = "all")
     updateCheckboxInput(session, "quality", value = TRUE)
     updateCheckboxInput(session, "compare_periods", value = FALSE)
     updateDateInput(session, "period_cutoff", value = "2026-07-01")
@@ -376,7 +390,8 @@ server <- function(input, output, session) {
       stopifnot(identical(as.integer(view$schema_version), 1L), is.list(s), length(s$dates) == 2, length(s$hours) == 2,
         all(!is.na(as.Date(s$dates))), all(is.finite(s$hours)), s$hours[1] <= s$hours[2],
         s$group %in% unname(group_choices), s$facet %in% unname(facet_choices), s$mode %in% c("mean", "points", "replicates", "both"),
-        s$unit %in% c("plate", "run"), s$uncertainty %in% c("none", "se", "sd"))
+        s$unit %in% c("plate", "run"), s$uncertainty %in% c("none", "se", "sd"),
+        is.null(s$date_selection) || s$date_selection %in% c("all", "shared", "overlap"))
       for (field in c("genotype", "strain", "culture", "bacteria", "config", "sync", "runs")) {
         available <- if (field == "runs") sort(unique(dataset()$data$run_id)) else sort(unique(dataset()$data[[field]]))
         updateSelectizeInput(session, field, choices = union(available, s[[field]]), selected = s[[field]] %||% character(), server = field == "runs")
@@ -391,6 +406,7 @@ server <- function(input, output, session) {
       updateSliderInput(session, "hours", value = s$hours)
       for (field in c("quality", "undated")) updateCheckboxInput(session, field, value = isTRUE(s[[field]]))
       for (field in c("group", "facet", "mode", "unit", "uncertainty")) updateSelectInput(session, field, selected = s[[field]])
+      updateSelectInput(session, "date_selection", selected = s$date_selection %||% "all")
       updateNumericInput(session, "panel_page", value = max(1, as.integer(s$panel_page %||% 1)))
       excluded(as.character(s$excluded %||% character())); selected(NULL)
       if (is.list(s$pairing)) pairing$restore(s$pairing)

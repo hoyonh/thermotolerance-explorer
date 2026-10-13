@@ -11,7 +11,7 @@ pair_key <- function(d, fields) {
 pair_dates <- function(d, group, reference, comparison, cutoff,
                        same_experiment = TRUE, separate_males = TRUE,
                        allow_unknown = FALSE) {
-  stopifnot(group %in% c("strain", "genotype"), length(reference) == 1,
+  stopifnot(group %in% c("strain", "genotype", "config", "sync"), length(reference) == 1,
             length(comparison) == 1, reference != comparison,
             length(cutoff) == 1, !is.na(as.Date(cutoff)))
   d <- d[d[[group]] %in% c(reference, comparison), , drop = FALSE]
@@ -21,6 +21,12 @@ pair_dates <- function(d, group, reference, comparison, cutoff,
   if (!nrow(d)) return(list(pairs = data.frame(), audit = d))
   d$sex_label <- ifelse(grepl("(^|[. _])male([. _]|$)", d$raw_strain), "male-labelled", "not male-labelled")
   conditions <- c("source", "culture", "bacteria", "config", "sync")
+  # The compared setting is not matched. Configuration labels can begin with their
+  # synchronization ("NS s-NGM NGM-1"), so a synchronization comparison matches the rest.
+  prefix <- paste0(d$sync, " ")
+  d$config_without_sync <- ifelse(!is.na(d$config) & startsWith(d$config, prefix), substring(d$config, nchar(prefix) + 1), d$config)
+  matched <- setdiff(conditions, group)
+  if (group == "sync") matched[matched == "config"] <- "config_without_sync"
   missing_value <- function(x) is.na(x) | trimws(as.character(x)) %in% c("", "Not recorded")
   unknown <- Reduce(`|`, lapply(d[conditions], missing_value))
   invalid <- !is.finite(d$survival_pct) | !is.finite(d$hours)
@@ -30,7 +36,8 @@ pair_dates <- function(d, group, reference, comparison, cutoff,
   d$pair_status[invalid] <- "Invalid survival or time"
   eligible <- !invalid & !is.na(d$date) & (allow_unknown | !unknown) &
     (!same_experiment | !missing_value(d$expt))
-  block_fields <- c(conditions, "date", if (same_experiment) "expt", if (separate_males) "sex_label")
+  # Setting comparisons pair the same strain/stock.
+  block_fields <- c(matched, if (group %in% c("config", "sync")) "strain", "date", if (same_experiment) "expt", if (separate_males) "sex_label")
   d$pair_block[eligible] <- pair_key(d[eligible, , drop = FALSE], block_fields)
   keys <- pair_key(d[eligible, , drop = FALSE], c(block_fields, "hours"))
   groups <- split(which(eligible), keys)
@@ -42,10 +49,10 @@ pair_dates <- function(d, group, reference, comparison, cutoff,
     if (!nrow(a) || !nrow(b)) next
     # Stock composition is part of each stratum, even when comparing genotypes.
     # This prevents an old stock from being silently replaced by a new one.
-    row <- z[1, c(conditions, "date", "hours", "pair_block"), drop = FALSE]
+    row <- z[1, c(matched, "date", "hours", "pair_block"), drop = FALSE]
     row$sex_label <- if (separate_males) z$sex_label[1] else "Sex labels pooled"
     collapse <- function(x) paste(sort(unique(as.character(x))), collapse = "; ")
-    row$reference <- reference; row$comparison <- comparison
+    row$compared_by <- group; row$reference <- reference; row$comparison <- comparison
     row$reference_strains <- collapse(a$strain); row$comparison_strains <- collapse(b$strain)
     row$reference_experiments <- collapse(a$expt); row$comparison_experiments <- collapse(b$expt)
     row$reference_mean <- mean(a$survival_pct); row$comparison_mean <- mean(b$survival_pct)
@@ -55,9 +62,9 @@ pair_dates <- function(d, group, reference, comparison, cutoff,
     row$period <- ifelse(row$date >= as.Date(cutoff), "Recent", "Historic")
     row$recent_from <- as.Date(cutoff)
     row$same_experiment <- same_experiment
-    row$pair_stratum <- pair_key(row, c(conditions, "sex_label", "reference_strains", "comparison_strains"))
-    row$stratum_label <- paste(row$source, row$culture, row$bacteria, row$config, row$sync,
-      row$sex_label, paste(row$reference_strains, "vs", row$comparison_strains), sep = " · ")
+    row$pair_stratum <- pair_key(row, c(matched, "sex_label", "reference_strains", "comparison_strains"))
+    strains <- if (row$reference_strains == row$comparison_strains) row$reference_strains else paste(row$reference_strains, "vs", row$comparison_strains)
+    row$stratum_label <- do.call(paste, c(unname(as.list(row[matched])), list(row$sex_label, strains, sep = " · ")))
     row$pair_panel <- paste(row$date, if (same_experiment) paste("/ experiment", row$reference_experiments) else "/ all experiments")
     d$pair_status[idx] <- "Paired"
     d$pair_stratum[idx] <- row$pair_stratum

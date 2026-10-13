@@ -147,6 +147,40 @@ filter_data <- function(d, settings, apply_quality = TRUE) {
   d[keep, , drop = FALSE]
 }
 
+# Restrict to dates every compared group shares ("shared") or to the span all groups cover
+# ("overlap": latest first date to earliest last date). Undated rows are dropped.
+# Fewer than two groups leaves the data unchanged. The result records what was kept.
+select_group_dates <- function(d, group, mode = "all") {
+  if (identical(mode, "all") || !nrow(d)) return(d)
+  stopifnot(mode %in% c("shared", "overlap"))
+  groups <- as.character(d[[group]])
+  dated <- !is.na(d$date)
+  dates_by_group <- split(d$date[dated], groups[dated])
+  if (length(unique(groups)) < 2) return(d)
+  if (length(dates_by_group) < length(unique(groups))) {
+    keep <- rep(FALSE, nrow(d)); span <- as.Date(c(NA, NA))
+  } else if (mode == "shared") {
+    shared <- Reduce(intersect, lapply(dates_by_group, function(x) as.character(unique(x))))
+    keep <- dated & as.character(d$date) %in% shared
+    span <- if (length(shared)) range(as.Date(shared)) else as.Date(c(NA, NA))
+  } else {
+    span <- c(max(do.call(c, lapply(dates_by_group, min))), min(do.call(c, lapply(dates_by_group, max))))
+    keep <- dated & d$date >= span[1] & d$date <= span[2]
+  }
+  out <- d[keep, , drop = FALSE]
+  attr(out, "date_selection") <- list(mode = mode, rows_before = nrow(d), rows_kept = nrow(out), dates_before = length(unique(d$date[dated])),
+    dates_kept = length(unique(out$date)), span = span)
+  out
+}
+
+describe_date_selection <- function(info) {
+  if (is.null(info)) return(NULL)
+  what <- if (info$mode == "shared") "Dates shared by every compared group" else "Overlapping date range of the compared groups"
+  if (!info$dates_kept) return(paste0(what, ": none. No date satisfies this rule for the current groups."))
+  paste0(what, ": ", info$dates_kept, " of ", info$dates_before, " dates (", info$span[1], " to ", info$span[2], "); ",
+    info$rows_before - info$rows_kept, " observations outside them are omitted.")
+}
+
 decorate_data <- function(d, group, facet) {
   d$curve <- as.character(d[[group]])
   d$panel <- if (facet == "none") rep("All selected observations", nrow(d)) else as.character(d[[facet]])
