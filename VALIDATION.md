@@ -53,6 +53,15 @@ build; `tests/browser.mjs` passed against the live URL (defaults, tabs, both man
 paths, exports); a real click on the live button shows the “not public yet” message; and the
 Safari notice still appears in WebKit.
 
+## Update: assay dates accept any typed date (2026-10-13)
+
+The Assay dates fields no longer have a minimum and maximum. With the limits, bootstrap-datepicker
+replaced a typed date outside the CSV's range with another value (start 2024-01-01 became
+2026-10-13). The fields still start at the loaded data's first and last dates. A start after the
+end now gives "Assay dates: enter both dates, with the start no later than the end." Checked by
+typing dates inside and outside the range in Chrome; new `verify.R` tests; `tests/browser.mjs`,
+`tests/verify.R`, `compare_browser.R` and `audit.py` passed.
+
 ## Update: start-up message (2026-10-13)
 
 `loading.html` (inserted by `build.R` through Shinylive's `include_after_body`) shows a short

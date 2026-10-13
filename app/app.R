@@ -61,7 +61,7 @@ ui <- function(request) {
         multi("culture", "Culture temperature", start$culture), multi("bacteria", "Bacterial diet", start$bacteria),
         multi("config", "Experimental configuration", start$config), multi("sync", "Synchronization", start$sync),
         div(class = "control-group", div(class = "group-title", "Dates, hours & experiments"),
-          dateRangeInput("dates", "Assay dates", start = date_limits[1], end = date_limits[2], min = date_limits[1], max = date_limits[2]),
+          dateRangeInput("dates", "Assay dates", start = date_limits[1], end = date_limits[2]),
           checkboxInput("undated", "Include undated observations", FALSE),
           sliderInput("hours", "Heat exposure (hours)", min = 0, max = 4, value = c(0, 4), step = 0.5),
           selectizeInput("runs", "Recorded runs", choices = NULL, multiple = TRUE, options = list(placeholder = "All recorded runs"))),
@@ -148,6 +148,9 @@ server <- function(input, output, session) {
       valid <- tryCatch({validate_period_cutoffs(s$period_cutoffs); TRUE}, error = function(e) FALSE)
       validate(need(valid, "Enter valid cutoff dates in strictly increasing order."))
     }
+    dates <- suppressWarnings(as.Date(unlist(s$dates)))
+    validate(need(length(dates) == 2 && !anyNA(dates) && dates[1] <= dates[2],
+      "Assay dates: enter both dates, with the start no later than the end."))
     d <- select_group_dates(filter_data(dataset()$data, s), s$group, s$date_selection)
     info <- attr(d, "date_selection")
     d <- assign_time_period(d, s$compare_periods, s$period_cutoffs)
@@ -339,7 +342,7 @@ server <- function(input, output, session) {
     }
     updateSelectizeInput(session, "runs", choices = sort(unique(d$run_id)), selected = character(), server = TRUE)
     dates <- browser_dates(d); hours <- browser_hours(d)
-    updateDateRangeInput(session, "dates", min = dates[1], max = dates[2], start = dates[1], end = dates[2])
+    updateDateRangeInput(session, "dates", start = dates[1], end = dates[2])
     updateSliderInput(session, "hours", min = hours[1], max = hours[2], value = hours)
     updateCheckboxInput(session, "undated", value = TRUE)
     updateNumericInput(session, "panel_page", value = 1)
