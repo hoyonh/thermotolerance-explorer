@@ -60,6 +60,10 @@ and "Matching rules" in the paired-date panel are always shown, and **Dates comp
 from the sidebar to the plot controls next to Color / compare. Only the AUC audit table (output,
 not settings) remains collapsible. Layout checked by screenshot; `tests/browser.mjs`,
 `tests/verify.R`, `compare_browser.R` and the desktop functional checks passed.
+Deployed in [run 38349066110](https://github.com/hoyonh/thermotolerance-explorer/actions/runs/38349066110)
+(commit `9a31af6`); the live `app.json` is identical to the tested build and `tests/browser.mjs`
+passed against the live URL. github.com refused HTTPS connections from this Mac at the time, so
+the commit was pushed through the GitHub API with identical commit IDs.
 
 ## Update: setting comparisons and date selection (2026-10-13)
 
