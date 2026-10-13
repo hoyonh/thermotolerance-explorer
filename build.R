@@ -21,7 +21,8 @@ for (name in names(manifest)) {
 }
 shinylive::export(stage, file.path(root, "site"),
   wasm_packages = TRUE, assets_version = "0.10.12",
-  template_params = list(title = "Thermotolerance Explorer — local CSVs"))
+  template_params = list(title = "Thermotolerance Explorer — local CSVs",
+    include_after_body = paste(readLines(file.path(root, "loading.html"), encoding = "UTF-8"), collapse = "\n")))
 file.create(file.path(root, "site", ".nojekyll"))
 status <- system2("python3", shQuote(file.path(root, "audit.py")))
 if (status != 0) stop("Publication audit failed")

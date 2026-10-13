@@ -109,7 +109,7 @@ containing only these publication files from this folder:
 
 - `app/`
 - `source-manifest.json`
-- `build.R` and `audit.py`
+- `build.R`, `audit.py` and `loading.html` (the start-up message under the loading spinner)
 - `.github/workflows/pages.yml`
 - `.gitignore`, this README and `VALIDATION.md`
 

@@ -1,0 +1,25 @@
+<!-- Start-up message under Shinylive's spinner. build.R inserts this into site/index.html. -->
+<div id="startup-note" role="status" aria-live="polite" style="position:fixed; left:50%; top:calc(50% + 62px); transform:translateX(-50%); width:min(440px, calc(100vw - 40px)); text-align:center; font:13px/1.55 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color:#4d5f5a; pointer-events:none;">
+  <div style="font-weight:600; font-size:14px; color:#243b4a; margin-bottom:6px;">Starting the thermotolerance explorer…</div>
+  <div>R runs inside your browser, so the first visit downloads about 40&nbsp;MB. This usually takes 10–30 seconds; a slow connection can take a few minutes. Later visits are quicker.</div>
+  <div id="startup-elapsed" style="margin-top:8px; font-variant-numeric:tabular-nums; color:#7a8a86;"></div>
+  <div id="startup-slow" style="margin-top:6px;" hidden>Still loading. This is normal on a slow connection; please keep this tab open.</div>
+</div>
+<script>
+(function () {
+  var start = Date.now(), note = document.getElementById('startup-note');
+  function appVisible() {
+    var frames = document.querySelectorAll('#root iframe');
+    for (var i = 0; i < frames.length; i++) {
+      try { if (frames[i].contentDocument && frames[i].contentDocument.querySelector('.topbar')) return true; } catch (e) {}
+    }
+    return false;
+  }
+  var timer = setInterval(function () {
+    if (appVisible()) { clearInterval(timer); note.remove(); return; }
+    var s = Math.floor((Date.now() - start) / 1000);
+    document.getElementById('startup-elapsed').textContent = 'Elapsed ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    if (s >= 45) document.getElementById('startup-slow').hidden = false;
+  }, 500);
+})();
+</script>

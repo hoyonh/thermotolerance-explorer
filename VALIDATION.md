@@ -53,6 +53,14 @@ build; `tests/browser.mjs` passed against the live URL (defaults, tabs, both man
 paths, exports); a real click on the live button shows the “not public yet” message; and the
 Safari notice still appears in WebKit.
 
+## Update: start-up message (2026-10-13)
+
+`loading.html` (inserted by `build.R` through Shinylive's `include_after_body`) shows a short
+message, an elapsed-time counter and, after 45 s, a "still loading" line under the spinner. It
+removes itself when the app's page appears. No extra downloads. Checked with Chrome throttled to
+about 1 MB/s (message shown, slow line at 45 s, removed when the app appeared after about 103 s);
+`tests/browser.mjs` and `audit.py` passed.
+
 ## Update: no hidden settings (2026-10-13)
 
 Settings are no longer inside collapsed sections: "Dates, hours & experiments" in the sidebar
