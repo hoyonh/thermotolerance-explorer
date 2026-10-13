@@ -60,7 +60,10 @@ replaced a typed date outside the CSV's range with another value (start 2024-01-
 2026-10-13). The fields still start at the loaded data's first and last dates. A start after the
 end now gives "Assay dates: enter both dates, with the start no later than the end." Checked by
 typing dates inside and outside the range in Chrome; new `verify.R` tests; `tests/browser.mjs`,
-`tests/verify.R`, `compare_browser.R` and `audit.py` passed.
+`tests/verify.R`, `compare_browser.R` and `audit.py` passed. Deployed in
+[run 38378606194](https://github.com/hoyonh/thermotolerance-explorer/actions/runs/38378606194)
+(commit `a7a3860`); the live `app.json` is identical to the tested build and the typing check
+gave the same results on the live site.
 
 ## Update: start-up message (2026-10-13)
 
