@@ -59,7 +59,10 @@ Safari notice still appears in WebKit.
 message, an elapsed-time counter and, after 45 s, a "still loading" line under the spinner. It
 removes itself when the app's page appears. No extra downloads. Checked with Chrome throttled to
 about 1 MB/s (message shown, slow line at 45 s, removed when the app appeared after about 103 s);
-`tests/browser.mjs` and `audit.py` passed.
+`tests/browser.mjs` and `audit.py` passed. Deployed in
+[run 38351511679](https://github.com/hoyonh/thermotolerance-explorer/actions/runs/38351511679)
+(commit `32c0ee1`); on the live site the message appeared, showed the slow line, and was removed
+when the app appeared; the live `app.json` is identical to the tested build.
 
 ## Update: no hidden settings (2026-10-13)
 
