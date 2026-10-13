@@ -181,6 +181,19 @@ describe_date_selection <- function(info) {
     info$rows_before - info$rows_kept, " observations outside them are omitted.")
 }
 
+# Dated span of each loaded source, one line each, for the hint under Assay dates.
+date_coverage_lines <- function(d) {
+  if (!nrow(d)) return("No data loaded.")
+  sources <- unique(c(intersect(c("SKKU", "JHU"), d$source), d$source))
+  parts <- vapply(split(d$date, factor(d$source, sources)), function(x) {
+    x <- x[!is.na(x)]
+    if (length(x)) paste(format(min(x)), "to", format(max(x))) else "no dated observations"
+  }, character(1))
+  undated <- sum(is.na(d$date))
+  c(paste0(names(parts), ": ", parts),
+    if (undated) paste(format(undated, big.mark = ","), if (undated == 1) "undated observation" else "undated observations"))
+}
+
 decorate_data <- function(d, group, facet) {
   d$curve <- as.character(d[[group]])
   d$panel <- if (facet == "none") rep("All selected observations", nrow(d)) else as.character(d[[facet]])

@@ -53,6 +53,14 @@ build; `tests/browser.mjs` passed against the live URL (defaults, tabs, both man
 paths, exports); a real click on the live button shows the “not public yet” message; and the
 Safari notice still appears in WebKit.
 
+## Update: loaded date coverage (2026-10-13)
+
+Under Assay dates, the sidebar lists each loaded source's first and last date and the number
+of undated observations, with a **Use full range** link that resets the fields to the loaded
+span. New `verify.R` tests; `tests/browser.mjs` types an out-of-range start, clicks the link and
+checks the first date returns. Layout checked by screenshot; `tests/verify.R`,
+`compare_browser.R` and `audit.py` passed.
+
 ## Update: assay dates accept any typed date (2026-10-13)
 
 The Assay dates fields no longer have a minimum and maximum. With the limits, bootstrap-datepicker

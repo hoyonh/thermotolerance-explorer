@@ -62,6 +62,7 @@ ui <- function(request) {
         multi("config", "Experimental configuration", start$config), multi("sync", "Synchronization", start$sync),
         div(class = "control-group", div(class = "group-title", "Dates, hours & experiments"),
           dateRangeInput("dates", "Assay dates", start = date_limits[1], end = date_limits[2]),
+          div(class = "hint date-coverage", uiOutput("date_coverage"), actionLink("dates_full", "Use full range")),
           checkboxInput("undated", "Include undated observations", FALSE),
           sliderInput("hours", "Heat exposure (hours)", min = 0, max = 4, value = c(0, 4), step = 0.5),
           selectizeInput("runs", "Recorded runs", choices = NULL, multiple = TRUE, options = list(placeholder = "All recorded runs"))),
@@ -231,6 +232,11 @@ server <- function(input, output, session) {
   })
   output$panel_count <- renderText(paste(length(panels()), "panels ·", max(1, ceiling(length(panels()) / 12)), "pages"))
   output$loaded_at <- renderText(paste("Loaded", dataset()$loaded_at))
+  output$date_coverage <- renderUI(tagList(div("Loaded data"), lapply(date_coverage_lines(dataset()$data), div)))
+  observeEvent(input$dates_full, {
+    x <- dataset()$data$date[!is.na(dataset()$data$date)]
+    if (length(x)) updateDateRangeInput(session, "dates", start = min(x), end = max(x))
+  })
   output$excluded_count <- renderText(paste(length(excluded()), "manually excluded observations in this view."))
   output$provenance <- renderPrint(list(files = dataset()$files, md5 = dataset()$hashes, loaded = dataset()$loaded_at))
   observeEvent(list(input$facet, input$group, input$sources, input$genotype, input$strain), {

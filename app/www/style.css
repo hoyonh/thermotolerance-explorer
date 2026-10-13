@@ -17,6 +17,9 @@ h1 { font-size:30px; font-weight:650; letter-spacing:-1px; margin:0 0 8px; }
 input[type=checkbox] { accent-color:var(--teal); }
 .hint { color:var(--muted); font-size:11px; line-height:1.6; }
 .filters .hint { margin-top:12px; }
+.filters .date-coverage { margin:-8px 0 12px; }
+.date-coverage div { white-space:nowrap; }
+#date_coverage > div:first-child { font-weight:600; }
 .control-group { border-top:1px solid var(--line); padding-top:13px; margin:15px 0; }
 .group-title { font-size:12px; font-weight:600; margin-bottom:14px; }
 .control-hint { margin:-4px 0 12px; }
