@@ -19,6 +19,11 @@ input[type=checkbox] { accent-color:var(--teal); }
 .filters .hint { margin-top:12px; }
 .filters .date-coverage { margin:-8px 0 12px; }
 .date-coverage div { white-space:nowrap; }
+.filters .period-summary { margin:6px 0 12px; }
+#period_summary > div:first-child { font-weight:600; }
+.period-line { margin-top:3px; }
+.period-line > div:first-child { color:var(--ink); white-space:nowrap; }
+.period-counts { padding-left:10px; }
 #date_coverage > div:first-child { font-weight:600; }
 .control-group { border-top:1px solid var(--line); padding-top:13px; margin:15px 0; }
 .group-title { font-size:12px; font-weight:600; margin-bottom:14px; }

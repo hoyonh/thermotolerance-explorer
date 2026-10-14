@@ -53,6 +53,30 @@ build; `tests/browser.mjs` passed against the live URL (defaults, tabs, both man
 paths, exports); a real click on the live button shows the “not public yet” message; and the
 Safari notice still appears in WebKit.
 
+## Update: latest CSV shown first; combined-source notice (2026-10-14)
+
+Choosing a CSV now shows only that source; any other loaded file stays loaded and can be
+ticked under **Data sources**. Condition defaults still cover every loaded file, so ticking the
+other source shows its data. Removing a file shows the remaining one. When SKKU and JHU are both
+in the selection, the notice above the plot suggests examining them separately, unless Source is
+the colour or panel choice (also in the desktop app). New `verify.R` tests for the notice;
+`tests/browser.mjs` checks that loading JHU after SKKU shows JHU alone without the notice, and
+that ticking SKKU too shows it. The paired-example readiness check in `browser.mjs` now polls
+only while Shiny is idle, with a 15-second fetch timeout: polling during a re-render once failed
+inside Shinylive's virtual server ("Empty or null key when converting atomic vector") and once
+left the test waiting indefinitely. Not yet deployed.
+
+## Update: equal-date time periods (2026-10-14)
+
+**Compare time periods** has a **Periods from** choice: **Cutoff dates** (unchanged) or **Equal
+numbers of assay dates**, which splits the selection's distinct assay dates into 2–6 consecutive
+periods as `group_dates_n()` in `scripts/plot_functions.R` does. A **Current selection** list shows
+each period's dates and observations; too few dates for the chosen number stops with a message.
+New `verify_auc.R` tests include a match against `group_dates_n()` itself (parsed from
+`plot_functions.R`) for 2–6 periods on the real N2.thaw dates. `tests/browser.mjs` selects four
+equal periods and checks the summary and legend; layout checked by screenshot;
+`tests/verify.R`, `compare_browser.R` and `audit.py` passed. Not yet deployed.
+
 ## Update: loaded date coverage (2026-10-13)
 
 Under Assay dates, the sidebar lists each loaded source's first and last date and the number

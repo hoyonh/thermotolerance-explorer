@@ -15,8 +15,14 @@ reset to the defaults: 20°C culture, OP50-1 diet, standard configuration and
 standard synchronization, with OP50 added while the JHU file (all OP50) is
 loaded. Defaults missing from the data are left blank (all). Manual exclusions
 are cleared so row-based exclusions are not silently carried over to changed
-data. **Clear filters** still selects everything. The other loaded
-source stays available. A JHU-only session is also supported. Invalid files show
+data. **Clear filters** still selects everything.
+
+Only the CSV you chose most recently is shown at first. The other file stays
+loaded: tick it under **Data sources** to view both together. The condition
+defaults cover every loaded file, so ticking the second source shows its data.
+When both are shown, the notice above the plot suggests examining them
+separately (they come from different laboratories and years). Removing a file
+shows the one that remains. A JHU-only session is also supported. Invalid files show
 an error and leave the last valid dataset in place.
 
 To update your data, choose the newer CSV. No website rebuild, SSH, screen or R

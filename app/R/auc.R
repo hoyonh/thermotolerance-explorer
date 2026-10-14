@@ -1,20 +1,53 @@
 auc_hours <- c(2, 2.5, 3, 3.5)
 
-assign_time_period <- function(d, enabled = FALSE, cutoff = "2026-07-01") {
+# Periods come from cutoff dates (group_dates in plot_functions.R) or from splitting the
+# distinct assay dates into n consecutive groups of near-equal size (group_dates_n).
+assign_time_period <- function(d, enabled = FALSE, cutoff = "2026-07-01", method = "cutoffs", n = 3) {
   d$time_period <- rep("All dates", nrow(d))
   d$time_period_index <- rep(1L, nrow(d))
   if (!enabled) return(d)
-  cutoff <- validate_period_cutoffs(cutoff)
-  labels <- c(paste("Before", cutoff[1]),
-    if (length(cutoff) > 1) paste(head(cutoff, -1), "to", tail(cutoff, -1) - 1),
-    paste(tail(cutoff, 1), "onward"))
   known <- !is.na(d$date)
-  index <- findInterval(as.numeric(d$date[known]), as.numeric(cutoff)) + 1L
+  if (identical(method, "equal")) {
+    dates <- sort(unique(d$date[known]))
+    n <- validate_period_n(n, length(dates))
+    groups <- cut(seq_along(dates), breaks = n, labels = FALSE)
+    labels <- vapply(seq_len(n), function(i) {
+      x <- dates[groups == i]
+      if (length(x) == 1) as.character(x) else paste(min(x), "to", max(x))
+    }, character(1))
+    index <- groups[match(d$date[known], dates)]
+  } else {
+    cutoff <- validate_period_cutoffs(cutoff)
+    labels <- c(paste("Before", cutoff[1]),
+      if (length(cutoff) > 1) paste(head(cutoff, -1), "to", tail(cutoff, -1) - 1),
+      paste(tail(cutoff, 1), "onward"))
+    index <- findInterval(as.numeric(d$date[known]), as.numeric(cutoff)) + 1L
+  }
   d$time_period[known] <- labels[index]
   d$time_period_index[known] <- index
   d$time_period[!known] <- "Undated (not assigned)"
   d$time_period_index[!known] <- length(labels) + 1L
   d
+}
+
+validate_period_n <- function(n, available) {
+  n <- suppressWarnings(as.integer(n))
+  if (length(n) != 1 || is.na(n) || n < 2 || n > 6) stop("Choose two to six time periods.", call. = FALSE)
+  if (n > available) stop(sprintf("The selected data have %d distinct assay date%s, too few for %d equal time periods.",
+    available, if (available == 1) "" else "s", n), call. = FALSE)
+  n
+}
+
+# One line per period: its label, distinct assay dates and observations.
+describe_time_periods <- function(d) {
+  if (!nrow(d)) return(character())
+  idx <- sort(unique(d$time_period_index))
+  vapply(idx, function(i) {
+    z <- d[d$time_period_index == i, , drop = FALSE]
+    dates <- length(unique(z$date[!is.na(z$date)]))
+    paste0(z$time_period[1], ": ", if (all(is.na(z$date))) "" else paste0(dates, if (dates == 1) " date, " else " dates, "),
+      nrow(z), if (nrow(z) == 1) " observation" else " observations")
+  }, character(1))
 }
 
 validate_period_cutoffs <- function(cutoffs) {

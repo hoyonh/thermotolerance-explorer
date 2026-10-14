@@ -51,11 +51,17 @@ ui <- function(request) {
         div(class = "section-title", "Build a comparison"),
         checkboxInput("compare_periods", "Compare time periods", FALSE),
         conditionalPanel("input.compare_periods",
-          selectInput("period_count", "Number of time periods", choices = c(2, 3, 4), selected = 2),
-          dateInput("period_cutoff", "First cutoff", value = "2026-07-01"),
-          conditionalPanel("input.period_count >= 3", dateInput("period_cutoff2", "Second cutoff", value = "2026-08-01")),
-          conditionalPanel("input.period_count >= 4", dateInput("period_cutoff3", "Third cutoff", value = "2026-09-01")),
-          p(class = "hint", "Cutoffs must increase. Each cutoff starts the next period; dates before the first and after the last remain included.")),
+          radioButtons("period_method", "Periods from", c("Cutoff dates" = "cutoffs", "Equal numbers of assay dates" = "equal"), selected = "cutoffs"),
+          conditionalPanel("input.period_method == 'cutoffs'",
+            selectInput("period_count", "Number of time periods", choices = c(2, 3, 4), selected = 2),
+            dateInput("period_cutoff", "First cutoff", value = "2026-07-01"),
+            conditionalPanel("input.period_count >= 3", dateInput("period_cutoff2", "Second cutoff", value = "2026-08-01")),
+            conditionalPanel("input.period_count >= 4", dateInput("period_cutoff3", "Third cutoff", value = "2026-09-01")),
+            p(class = "hint", "Cutoffs must increase. Each cutoff starts the next period; dates before the first and after the last remain included.")),
+          conditionalPanel("input.period_method == 'equal'",
+            selectInput("period_n", "Number of time periods", choices = 2:6, selected = 3),
+            p(class = "hint", "The distinct assay dates in the current selection are split, in order, into periods with near-equal numbers of dates. Works best with one strain selected; with several, the dates are pooled.")),
+          div(class = "hint period-summary", uiOutput("period_summary"))),
         checkboxGroupInput("sources", "Data sources", c("SKKU · 2024–2026" = "SKKU", "JHU · legacy" = "JHU"), selected = "SKKU"),
         multi("genotype", "Genotype", c("wild type", "sma-9(wk55)")), multi("strain", "Strain"),
         multi("culture", "Culture temperature", start$culture), multi("bacteria", "Bacterial diet", start$bacteria),
@@ -140,12 +146,13 @@ server <- function(input, output, session) {
       date_selection = input$date_selection %||% "all", quality = input$quality, excluded = excluded(), group = input$group, facet = input$facet,
       mode = input$mode, unit = input$unit, uncertainty = input$uncertainty, panel_page = input$panel_page,
       compare_periods = isTRUE(input$compare_periods), period_cutoff = cutoffs[1],
-      period_count = period_count, period_cutoffs = cutoffs)
+      period_count = period_count, period_cutoffs = cutoffs,
+      period_method = if (identical(input$period_method, "equal")) "equal" else "cutoffs", period_n = as.integer(input$period_n %||% 3))
   })
   filtered <- reactive({
     req(nrow(dataset()$data) > 0)
     s <- settings()
-    if (s$compare_periods) {
+    if (s$compare_periods && s$period_method == "cutoffs") {
       valid <- tryCatch({validate_period_cutoffs(s$period_cutoffs); TRUE}, error = function(e) FALSE)
       validate(need(valid, "Enter valid cutoff dates in strictly increasing order."))
     }
@@ -154,14 +161,19 @@ server <- function(input, output, session) {
       "Assay dates: enter both dates, with the start no later than the end."))
     d <- select_group_dates(filter_data(dataset()$data, s), s$group, s$date_selection)
     info <- attr(d, "date_selection")
-    d <- assign_time_period(d, s$compare_periods, s$period_cutoffs)
+    if (s$compare_periods && s$period_method == "equal") {
+      problem <- tryCatch({validate_period_n(s$period_n, length(unique(d$date[!is.na(d$date)]))); NULL}, error = conditionMessage)
+      validate(need(is.null(problem), problem))
+    }
+    d <- assign_time_period(d, s$compare_periods, s$period_cutoffs, s$period_method, s$period_n)
     attr(d, "date_selection") <- info
     d
   })
   auc <- auc_server("auc", filtered, reactive(input$group), reactive(input$unit))
   pairing <- paired_date_server("paired", filtered, pairing_cutoff, unfiltered = function() {
     s <- settings(); s$config <- character(); s$sync <- character()
-    assign_time_period(select_group_dates(filter_data(dataset()$data, s), s$group, s$date_selection), s$compare_periods, s$period_cutoffs)
+    # Paired-date comparisons do not use time periods, so they are not assigned here.
+    assign_time_period(select_group_dates(filter_data(dataset()$data, s), s$group, s$date_selection))
   })
   observeEvent(pairing$example(), {
     req(nrow(dataset()$data) > 0)
@@ -224,13 +236,22 @@ server <- function(input, output, session) {
     kept <- if (is.null(info)) nrow(d) else info$rows_before
     if (nrow(candidate) > kept) notes <- c(notes, paste(nrow(candidate) - kept, "observations omitted by quality rules or manual exclusions."))
     notes <- c(notes, describe_date_selection(info))
-    mixed <- c("source", "culture", "bacteria", "config", "sync")
+    sources <- sort(unique(d$source))
+    both_sources <- length(sources) > 1 && !"source" %in% c(input$group, input$facet)
+    if (both_sources) notes <- c(notes, paste0(paste(sources, collapse = " and "), " data are combined here. They come from different laboratories and years, ",
+      "so examine each source separately (Data sources, in the sidebar) unless you mean to compare them; to compare them, choose Source under Color / compare or By source under Arrange panels."))
+    mixed <- c(if (!both_sources) "source", "culture", "bacteria", "config", "sync")
     mixed <- mixed[vapply(mixed, function(x) length(unique(d[[x]])) > 1 && !x %in% c(input$group, input$facet), logical(1))]
     if (length(mixed)) notes <- c(notes, paste("Pooled across:", paste(mixed, collapse = ", "), "— use filters or panels to separate these conditions."))
     if (isTRUE(input$compare_periods) && any(is.na(d$date))) notes <- c(notes, "Undated observations are shown separately as ‘Undated (not assigned)’; they are not placed in a dated time period.")
     if (length(notes)) div(class = "notice", paste(notes, collapse = " "))
   })
   output$panel_count <- renderText(paste(length(panels()), "panels ·", max(1, ceiling(length(panels()) / 12)), "pages"))
+  output$period_summary <- renderUI({
+    lines <- tryCatch(describe_time_periods(filtered()), error = function(e) character())
+    if (length(lines)) tagList(div("Current selection"), lapply(lines, function(x)
+      div(class = "period-line", div(sub(": [^:]*$", "", x)), div(class = "period-counts", sub("^.*: ", "", x)))))
+  })
   output$loaded_at <- renderText(paste("Loaded", dataset()$loaded_at))
   output$date_coverage <- renderUI(tagList(div("Loaded data"), lapply(date_coverage_lines(dataset()$data), div)))
   observeEvent(input$dates_full, {
@@ -320,6 +341,8 @@ server <- function(input, output, session) {
     updateCheckboxInput(session, "compare_periods", value = FALSE)
     updateDateInput(session, "period_cutoff", value = "2026-07-01")
     updateSelectInput(session, "period_count", selected = 2)
+    updateRadioButtons(session, "period_method", selected = "cutoffs")
+    updateSelectInput(session, "period_n", selected = 3)
     updateDateInput(session, "period_cutoff2", value = "2026-08-01")
     updateDateInput(session, "period_cutoff3", value = "2026-09-01")
     updateNumericInput(session, "panel_page", value = 1)
@@ -335,12 +358,14 @@ server <- function(input, output, session) {
     if (!length(x$files)) return("Choose SKKU, JHU, or both. No experimental data is bundled with this site.")
     paste(paste(names(x$files), x$files, sep = ": "), collapse = " · ")
   })
-  apply_browser_snapshot <- function(next_parts) {
+  # `show` is the source to display: the CSV just loaded. Others stay loaded and can be ticked
+  # under Data sources. Condition defaults cover every loaded source, so ticking one shows data.
+  apply_browser_snapshot <- function(next_parts, show = names(next_parts)) {
     fresh <- combine_browser_sources(next_parts)
     parts(next_parts); dataset(fresh)
     excluded(character()); selected(NULL)
     d <- fresh$data
-    updateCheckboxGroupInput(session, "sources", choices = setNames(names(next_parts), names(next_parts)), selected = names(next_parts))
+    updateCheckboxGroupInput(session, "sources", choices = setNames(names(next_parts), names(next_parts)), selected = intersect(show, names(next_parts)))
     start <- default_filter_selection(d, names(next_parts))
     for (field in c("genotype", "strain", "culture", "bacteria", "config", "sync")) {
       updateSelectizeInput(session, field, choices = sort(unique(d[[field]])),
@@ -353,7 +378,10 @@ server <- function(input, output, session) {
     updateCheckboxInput(session, "undated", value = TRUE)
     updateNumericInput(session, "panel_page", value = 1)
     updateNumericInput(session, "row_page", value = 1)
-    showNotification("Data updated. Condition filters were reset to their defaults and manual exclusions were cleared. JHU uses OP50; unavailable defaults are left at All.", type = "message")
+    others <- setdiff(names(next_parts), show)
+    showNotification(paste0("Data updated. Condition filters were reset to their defaults and manual exclusions were cleared. JHU uses OP50; unavailable defaults are left at All.",
+      if (length(others) && length(show) == 1) paste0(" Showing ", show, ", the file just loaded; ", paste(others, collapse = " and "), " is still loaded; tick it under Data sources to combine them.")),
+      type = "message", duration = 10)
   }
   for (source in names(source_files)) local({
     key <- source
@@ -361,7 +389,7 @@ server <- function(input, output, session) {
       tryCatch({
         parsed <- read_browser_csv(input[[paste0("csv_", key)]], key)
         next_parts <- parts(); next_parts[[key]] <- parsed
-        apply_browser_snapshot(next_parts)
+        apply_browser_snapshot(next_parts, show = key)
       }, error = function(e) showNotification(paste("Could not load", key, "CSV:", conditionMessage(e)), type = "error", duration = NULL))
     }, ignoreInit = TRUE)
     observeEvent(input[[paste0("remove_", key)]], {
@@ -378,7 +406,7 @@ server <- function(input, output, session) {
       writeBin(jsonlite::base64_dec(m$data), path)
       parsed <- read_browser_csv(data.frame(name = m$name, size = file.size(path), datapath = path), "SKKU")
       next_parts <- parts(); next_parts$SKKU <- parsed
-      apply_browser_snapshot(next_parts)
+      apply_browser_snapshot(next_parts, show = "SKKU")
       session$sendCustomMessage("clearFileInput", "csv_SKKU")
       session$sendCustomMessage("manuscriptStatus", list(text = "Manuscript dataset loaded as SKKU.", error = FALSE))
     }, error = function(e) session$sendCustomMessage("manuscriptStatus", list(text = paste("Could not read the manuscript CSV:", conditionMessage(e)), error = TRUE)))
@@ -400,7 +428,9 @@ server <- function(input, output, session) {
         all(!is.na(as.Date(s$dates))), all(is.finite(s$hours)), s$hours[1] <= s$hours[2],
         s$group %in% unname(group_choices), s$facet %in% unname(facet_choices), s$mode %in% c("mean", "points", "replicates", "both"),
         s$unit %in% c("plate", "run"), s$uncertainty %in% c("none", "se", "sd"),
-        is.null(s$date_selection) || s$date_selection %in% c("all", "shared", "overlap"))
+        is.null(s$date_selection) || s$date_selection %in% c("all", "shared", "overlap"),
+        is.null(s$period_method) || s$period_method %in% c("cutoffs", "equal"),
+        is.null(s$period_n) || as.integer(s$period_n) %in% 2:6)
       for (field in c("genotype", "strain", "culture", "bacteria", "config", "sync", "runs")) {
         available <- if (field == "runs") sort(unique(dataset()$data$run_id)) else sort(unique(dataset()$data[[field]]))
         updateSelectizeInput(session, field, choices = union(available, s[[field]]), selected = s[[field]] %||% character(), server = field == "runs")
@@ -409,6 +439,8 @@ server <- function(input, output, session) {
       updateDateRangeInput(session, "dates", start = s$dates[1], end = s$dates[2])
       updateCheckboxInput(session, "compare_periods", value = isTRUE(s$compare_periods))
       updateSelectInput(session, "period_count", selected = length(period_cutoffs) + 1L)
+      updateRadioButtons(session, "period_method", selected = s$period_method %||% "cutoffs")
+      updateSelectInput(session, "period_n", selected = as.integer(s$period_n %||% 3))
       updateDateInput(session, "period_cutoff", value = period_cutoffs[1])
       updateDateInput(session, "period_cutoff2", value = if (length(period_cutoffs) >= 2) period_cutoffs[2] else as.Date("2026-08-01"))
       updateDateInput(session, "period_cutoff3", value = if (length(period_cutoffs) >= 3) period_cutoffs[3] else as.Date("2026-09-01"))
