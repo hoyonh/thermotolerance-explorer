@@ -32,7 +32,7 @@ assign_time_period <- function(d, enabled = FALSE, cutoff = "2026-07-01", method
 
 validate_period_n <- function(n, available) {
   n <- suppressWarnings(as.integer(n))
-  if (length(n) != 1 || is.na(n) || n < 2 || n > 6) stop("Choose two to six time periods.", call. = FALSE)
+  if (length(n) != 1 || is.na(n) || n < 2 || n > 10) stop("Choose two to ten time periods.", call. = FALSE)
   if (n > available) stop(sprintf("The selected data have %d distinct assay date%s, too few for %d equal time periods.",
     available, if (available == 1) "" else "s", n), call. = FALSE)
   n

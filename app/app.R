@@ -59,7 +59,7 @@ ui <- function(request) {
             conditionalPanel("input.period_count >= 4", dateInput("period_cutoff3", "Third cutoff", value = "2026-09-01")),
             p(class = "hint", "Cutoffs must increase. Each cutoff starts the next period; dates before the first and after the last remain included.")),
           conditionalPanel("input.period_method == 'equal'",
-            selectInput("period_n", "Number of time periods", choices = 2:6, selected = 3),
+            selectInput("period_n", "Number of time periods", choices = 2:10, selected = 3),
             p(class = "hint", "The distinct assay dates in the current selection are split, in order, into periods with near-equal numbers of dates. Works best with one strain selected; with several, the dates are pooled.")),
           div(class = "hint period-summary", uiOutput("period_summary"))),
         checkboxGroupInput("sources", "Data sources", c("SKKU · 2024–2026" = "SKKU", "JHU · legacy" = "JHU"), selected = "SKKU"),
@@ -430,7 +430,7 @@ server <- function(input, output, session) {
         s$unit %in% c("plate", "run"), s$uncertainty %in% c("none", "se", "sd"),
         is.null(s$date_selection) || s$date_selection %in% c("all", "shared", "overlap"),
         is.null(s$period_method) || s$period_method %in% c("cutoffs", "equal"),
-        is.null(s$period_n) || as.integer(s$period_n) %in% 2:6)
+        is.null(s$period_n) || as.integer(s$period_n) %in% 2:10)
       for (field in c("genotype", "strain", "culture", "bacteria", "config", "sync", "runs")) {
         available <- if (field == "runs") sort(unique(dataset()$data$run_id)) else sort(unique(dataset()$data[[field]]))
         updateSelectizeInput(session, field, choices = union(available, s[[field]]), selected = s[[field]] %||% character(), server = field == "runs")

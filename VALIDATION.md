@@ -53,6 +53,14 @@ build; `tests/browser.mjs` passed against the live URL (defaults, tabs, both man
 paths, exports); a real click on the live button shows the “not public yet” message; and the
 Safari notice still appears in WebKit.
 
+## Update: up to ten equal-date periods; start-up wording (2026-10-14)
+
+**Equal numbers of assay dates** now allows 2–10 periods (was 2–6). The `group_dates_n()` match
+in `verify_auc.R` now covers 2–10 periods; `tests/browser.mjs` checks the choices are 2 to 10.
+The start-up message now says the 40 MB download also happens on the first visit after the app
+is updated, as seen after deployments. `tests/browser.mjs`,
+`tests/verify.R`, `compare_browser.R` and `audit.py` passed. Not yet deployed.
+
 ## Update: latest CSV shown first; combined-source notice (2026-10-14)
 
 Choosing a CSV now shows only that source; any other loaded file stays loaded and can be
