@@ -64,7 +64,11 @@ the colour or panel choice (also in the desktop app). New `verify.R` tests for t
 that ticking SKKU too shows it. The paired-example readiness check in `browser.mjs` now polls
 only while Shiny is idle, with a 15-second fetch timeout: polling during a re-render once failed
 inside Shinylive's virtual server ("Empty or null key when converting atomic vector") and once
-left the test waiting indefinitely. Not yet deployed.
+left the test waiting indefinitely. Deployed in
+[run 38516289560](https://github.com/hoyonh/thermotolerance-explorer/actions/runs/38516289560)
+(commit `8ff961d`); the live `app.json` is identical to the tested build and the full
+`tests/browser.mjs` passed against the live site (with a longer start-up allowance for the
+first download).
 
 ## Update: equal-date time periods (2026-10-14)
 
@@ -75,7 +79,7 @@ each period's dates and observations; too few dates for the chosen number stops 
 New `verify_auc.R` tests include a match against `group_dates_n()` itself (parsed from
 `plot_functions.R`) for 2–6 periods on the real N2.thaw dates. `tests/browser.mjs` selects four
 equal periods and checks the summary and legend; layout checked by screenshot;
-`tests/verify.R`, `compare_browser.R` and `audit.py` passed. Not yet deployed.
+`tests/verify.R`, `compare_browser.R` and `audit.py` passed. Deployed with the update above (commit `8ff961d`).
 
 ## Update: loaded date coverage (2026-10-13)
 
