@@ -238,3 +238,33 @@ warnings. Treat each build as unvalidated until the checks above pass.
   slow start on a new computer or after a cache clear.
 - The browser console reports one harmless 404 (the site has no favicon).
 - A page refresh clears loaded CSVs by design; saved views store settings only.
+
+
+## Balanced observation periods (2026-10-19)
+
+Added **Balanced numbers of observations** to Compare time periods (2–10).
+The shared analysis uses the same dynamic-programming objective and tie handling
+as `group_dates_balanced()` in `scripts/plot_functions.R`. Filtering precedes
+assignment; dates are indivisible, counts are pooled across selected groups,
+and undated observations remain separate. Saved views accept `balanced`.
+
+Validation: `Rscript --vanilla thermotolerance_explorer_shinylive/tests/verify.R`
+passed, including 780 balanced-period assertions covering reference agreement,
+skewed counts, ties, missing dates, invalid group counts and empty selections.
+App server checks passed for plots, period summaries, exported assignments and
+saved-view handling. The static site was rebuilt and the publication audit
+passed (11 allowlisted inputs, no CSVs). This update was not tested in a live
+browser or published to GitHub Pages. The exporter reported native/WebAssembly
+package-version differences; browser runtime compatibility was not rechecked.
+
+
+## Chronological legend ordering (2026-10-19)
+
+Color-scale limits and breaks now preserve the curve factor order. Interactive
+legend entries receive explicit ranks from that order, so panel and layer trace
+ordering cannot rearrange periods. Periods remain chronological within each
+comparison group. All four display modes passed regression checks using panels
+whose first traces belong to the last period, checking both ggplot scale order
+and Plotly legend ranks/uniqueness. The browser adapter suite passed and the
+static site was rebuilt and audited. No live-browser check or deployment was
+performed for this update.

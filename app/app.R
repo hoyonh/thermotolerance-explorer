@@ -13,6 +13,10 @@ source("R/browser_data.R", local = TRUE)
 source("R/browser_plots.R", local = TRUE)
 paired_trend_plot <- browser_paired_plot(paired_trend_plot)
 pairing_cutoff <- as.Date("2026-09-01")
+# Manual time-period cutoffs: up to five, giving up to six periods.
+cutoff_ids <- c("period_cutoff", paste0("period_cutoff", 2:5))
+cutoff_defaults <- c("2026-07-01", "2026-08-01", "2026-09-01", "2026-10-01", "2026-11-01")
+cutoff_labels <- paste(c("First", "Second", "Third", "Fourth", "Fifth"), "cutoff")
 group_choices <- c("Genotype" = "genotype", "Strain" = "strain", "Bacterial diet" = "bacteria", "Culture temperature" = "culture", "Configuration" = "config", "Source" = "source", "Synchronization" = "sync", "Row position" = "row_position")
 facet_choices <- c("Pooled view" = "none", "By experiment / date" = "run_id", "By date" = "date", "By culture temperature" = "culture", "By bacterial diet" = "bacteria", "By configuration" = "config", "By source" = "source", "By row position" = "row_position")
 
@@ -51,16 +55,17 @@ ui <- function(request) {
         div(class = "section-title", "Build a comparison"),
         checkboxInput("compare_periods", "Compare time periods", FALSE),
         conditionalPanel("input.compare_periods",
-          radioButtons("period_method", "Periods from", c("Cutoff dates" = "cutoffs", "Equal numbers of assay dates" = "equal"), selected = "cutoffs"),
+          radioButtons("period_method", "Periods from", c("Cutoff dates" = "cutoffs", "Equal numbers of assay dates" = "equal", "Balanced numbers of observations" = "balanced"), selected = "cutoffs"),
           conditionalPanel("input.period_method == 'cutoffs'",
-            selectInput("period_count", "Number of time periods", choices = c(2, 3, 4), selected = 2),
-            dateInput("period_cutoff", "First cutoff", value = "2026-07-01"),
-            conditionalPanel("input.period_count >= 3", dateInput("period_cutoff2", "Second cutoff", value = "2026-08-01")),
-            conditionalPanel("input.period_count >= 4", dateInput("period_cutoff3", "Third cutoff", value = "2026-09-01")),
+            selectInput("period_count", "Number of time periods", choices = 2:6, selected = 2),
+            dateInput(cutoff_ids[1], cutoff_labels[1], value = cutoff_defaults[1]),
+            lapply(2:5, function(i) conditionalPanel(sprintf("input.period_count >= %d", i + 1),
+              dateInput(cutoff_ids[i], cutoff_labels[i], value = cutoff_defaults[i]))),
             p(class = "hint", "Cutoffs must increase. Each cutoff starts the next period; dates before the first and after the last remain included.")),
-          conditionalPanel("input.period_method == 'equal'",
+          conditionalPanel("input.period_method == 'equal' || input.period_method == 'balanced'",
             selectInput("period_n", "Number of time periods", choices = 2:10, selected = 3),
-            p(class = "hint", "The distinct assay dates in the current selection are split, in order, into periods with near-equal numbers of dates. Works best with one strain selected; with several, the dates are pooled.")),
+            conditionalPanel("input.period_method == 'balanced'", p(class = "hint", "Consecutive periods balance observation counts in the current selection while keeping each assay date intact. Counts are pooled across selected strains; balance within each strain or in independent experiments is not guaranteed.")),
+            conditionalPanel("input.period_method == 'equal'", p(class = "hint", "The distinct assay dates in the current selection are split, in order, into periods with near-equal numbers of dates. Works best with one strain selected; with several, the dates are pooled."))),
           div(class = "hint period-summary", uiOutput("period_summary"))),
         checkboxGroupInput("sources", "Data sources", c("SKKU · 2024–2026" = "SKKU", "JHU · legacy" = "JHU"), selected = "SKKU"),
         multi("genotype", "Genotype", c("wild type", "sma-9(wk55)")), multi("strain", "Strain"),
@@ -137,9 +142,8 @@ server <- function(input, output, session) {
   settings <- reactive({
     req(input$dates, input$hours)
     period_count <- as.integer(input$period_count %||% 2)
-    validate(need(length(period_count) == 1 && period_count %in% 2:4, "Choose two, three or four periods."))
-    cutoffs <- c(as.character(input$period_cutoff %||% "2026-07-01"),
-      as.character(input$period_cutoff2 %||% "2026-08-01"), as.character(input$period_cutoff3 %||% "2026-09-01"))[seq_len(period_count - 1L)]
+    validate(need(length(period_count) == 1 && period_count %in% 2:6, "Choose two to six periods."))
+    cutoffs <- vapply(seq_along(cutoff_ids), function(i) as.character(input[[cutoff_ids[i]]] %||% cutoff_defaults[i]), character(1))[seq_len(period_count - 1L)]
     list(sources = input$sources, genotype = input$genotype, strain = input$strain,
       culture = input$culture, bacteria = input$bacteria, config = input$config, sync = input$sync,
       dates = as.character(input$dates), hours = input$hours, runs = input$runs, undated = input$undated,
@@ -147,7 +151,7 @@ server <- function(input, output, session) {
       mode = input$mode, unit = input$unit, uncertainty = input$uncertainty, panel_page = input$panel_page,
       compare_periods = isTRUE(input$compare_periods), period_cutoff = cutoffs[1],
       period_count = period_count, period_cutoffs = cutoffs,
-      period_method = if (identical(input$period_method, "equal")) "equal" else "cutoffs", period_n = as.integer(input$period_n %||% 3))
+      period_method = if (isTRUE(input$period_method %in% c("equal", "balanced"))) input$period_method else "cutoffs", period_n = as.integer(input$period_n %||% 3))
   })
   filtered <- reactive({
     req(nrow(dataset()$data) > 0)
@@ -161,7 +165,7 @@ server <- function(input, output, session) {
       "Assay dates: enter both dates, with the start no later than the end."))
     d <- select_group_dates(filter_data(dataset()$data, s), s$group, s$date_selection)
     info <- attr(d, "date_selection")
-    if (s$compare_periods && s$period_method == "equal") {
+    if (s$compare_periods && s$period_method %in% c("equal", "balanced")) {
       problem <- tryCatch({validate_period_n(s$period_n, length(unique(d$date[!is.na(d$date)]))); NULL}, error = conditionMessage)
       validate(need(is.null(problem), problem))
     }
@@ -218,8 +222,9 @@ server <- function(input, output, session) {
     plotlyOutput("curves", height = paste0(max(570, ceiling(length(page_panels()) / 3) * 220 + 150), "px"))
   })
   output$curves <- renderPlotly({
-    p <- legend_from_marks(ggplotly(plot_object(), tooltip = "text", source = "thermo"))
-    p <- layout(p, legend = list(orientation = "h", y = -0.16), margin = list(b = 100), hovermode = "closest")
+    p <- legend_from_marks(ggplotly(plot_object(), tooltip = "text", source = "thermo"),
+      curve_order = plot_object()$scales$get_scales("colour")$breaks)
+    p <- layout(p, legend = list(orientation = "h", y = -0.16, traceorder = "normal"), margin = list(b = 100), hovermode = "closest")
     p <- config(p, displaylogo = FALSE, toImageButtonOptions = list(format = "svg", filename = "thermotolerance_curves"))
     event_register(p, "plotly_click")
   })
@@ -339,12 +344,10 @@ server <- function(input, output, session) {
     updateSelectInput(session, "date_selection", selected = "all")
     updateCheckboxInput(session, "quality", value = TRUE)
     updateCheckboxInput(session, "compare_periods", value = FALSE)
-    updateDateInput(session, "period_cutoff", value = "2026-07-01")
+    for (i in seq_along(cutoff_ids)) updateDateInput(session, cutoff_ids[i], value = cutoff_defaults[i])
     updateSelectInput(session, "period_count", selected = 2)
     updateRadioButtons(session, "period_method", selected = "cutoffs")
     updateSelectInput(session, "period_n", selected = 3)
-    updateDateInput(session, "period_cutoff2", value = "2026-08-01")
-    updateDateInput(session, "period_cutoff3", value = "2026-09-01")
     updateNumericInput(session, "panel_page", value = 1)
     excluded(character()); selected(NULL)
   }
@@ -429,7 +432,7 @@ server <- function(input, output, session) {
         s$group %in% unname(group_choices), s$facet %in% unname(facet_choices), s$mode %in% c("mean", "points", "replicates", "both"),
         s$unit %in% c("plate", "run"), s$uncertainty %in% c("none", "se", "sd"),
         is.null(s$date_selection) || s$date_selection %in% c("all", "shared", "overlap"),
-        is.null(s$period_method) || s$period_method %in% c("cutoffs", "equal"),
+        is.null(s$period_method) || s$period_method %in% c("cutoffs", "equal", "balanced"),
         is.null(s$period_n) || as.integer(s$period_n) %in% 2:10)
       for (field in c("genotype", "strain", "culture", "bacteria", "config", "sync", "runs")) {
         available <- if (field == "runs") sort(unique(dataset()$data$run_id)) else sort(unique(dataset()$data[[field]]))
@@ -441,9 +444,8 @@ server <- function(input, output, session) {
       updateSelectInput(session, "period_count", selected = length(period_cutoffs) + 1L)
       updateRadioButtons(session, "period_method", selected = s$period_method %||% "cutoffs")
       updateSelectInput(session, "period_n", selected = as.integer(s$period_n %||% 3))
-      updateDateInput(session, "period_cutoff", value = period_cutoffs[1])
-      updateDateInput(session, "period_cutoff2", value = if (length(period_cutoffs) >= 2) period_cutoffs[2] else as.Date("2026-08-01"))
-      updateDateInput(session, "period_cutoff3", value = if (length(period_cutoffs) >= 3) period_cutoffs[3] else as.Date("2026-09-01"))
+      for (i in seq_along(cutoff_ids)) updateDateInput(session, cutoff_ids[i],
+        value = if (length(period_cutoffs) >= i) period_cutoffs[i] else as.Date(cutoff_defaults[i]))
       updateSliderInput(session, "hours", value = s$hours)
       for (field in c("quality", "undated")) updateCheckboxInput(session, field, value = isTRUE(s[[field]]))
       for (field in c("group", "facet", "mode", "unit", "uncertainty")) updateSelectInput(session, field, selected = s[[field]])

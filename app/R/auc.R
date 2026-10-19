@@ -1,16 +1,19 @@
 auc_hours <- c(2, 2.5, 3, 3.5)
 
 # Periods come from cutoff dates (group_dates in plot_functions.R) or from splitting the
-# distinct assay dates into n consecutive groups of near-equal size (group_dates_n).
+# distinct assay dates into n consecutive groups of near-equal size (group_dates_n),
+# or balancing observation counts without splitting dates (group_dates_balanced).
 assign_time_period <- function(d, enabled = FALSE, cutoff = "2026-07-01", method = "cutoffs", n = 3) {
   d$time_period <- rep("All dates", nrow(d))
   d$time_period_index <- rep(1L, nrow(d))
   if (!enabled) return(d)
   known <- !is.na(d$date)
-  if (identical(method, "equal")) {
+  if (method %in% c("equal", "balanced")) {
     dates <- sort(unique(d$date[known]))
     n <- validate_period_n(n, length(dates))
-    groups <- cut(seq_along(dates), breaks = n, labels = FALSE)
+    groups <- if (identical(method, "balanced")) {
+      balanced_date_groups(tabulate(match(d$date[known], dates), nbins = length(dates)), n)
+    } else cut(seq_along(dates), breaks = n, labels = FALSE)
     labels <- vapply(seq_len(n), function(i) {
       x <- dates[groups == i]
       if (length(x) == 1) as.character(x) else paste(min(x), "to", max(x))
@@ -30,10 +33,35 @@ assign_time_period <- function(d, enabled = FALSE, cutoff = "2026-07-01", method
   d
 }
 
+# Dynamic programming matches group_dates_balanced(), including first-minimum ties.
+# Each date is indivisible; minimize squared deviations from observations / n.
+balanced_date_groups <- function(weights, n) {
+  m <- length(weights)
+  cumulative <- c(0, cumsum(weights))
+  target <- sum(weights) / n
+  cost <- matrix(Inf, n + 1L, m + 1L)
+  previous <- matrix(NA_integer_, n + 1L, m + 1L)
+  cost[1, 1] <- 0
+  for (g in seq_len(n)) for (j in g:m) {
+    k <- (g - 1L):(j - 1L)
+    candidates <- cost[g, k + 1L] + (cumulative[j + 1L] - cumulative[k + 1L] - target)^2
+    best <- which.min(candidates)
+    cost[g + 1L, j + 1L] <- candidates[best]
+    previous[g + 1L, j + 1L] <- k[best]
+  }
+  ends <- integer(n)
+  j <- m
+  for (g in n:1L) {
+    ends[g] <- j
+    j <- previous[g + 1L, j + 1L]
+  }
+  rep(seq_len(n), diff(c(0L, ends)))
+}
+
 validate_period_n <- function(n, available) {
   n <- suppressWarnings(as.integer(n))
   if (length(n) != 1 || is.na(n) || n < 2 || n > 10) stop("Choose two to ten time periods.", call. = FALSE)
-  if (n > available) stop(sprintf("The selected data have %d distinct assay date%s, too few for %d equal time periods.",
+  if (n > available) stop(sprintf("The selected data have %d distinct assay date%s, too few for %d time periods.",
     available, if (available == 1) "" else "s", n), call. = FALSE)
   n
 }
@@ -52,8 +80,8 @@ describe_time_periods <- function(d) {
 
 validate_period_cutoffs <- function(cutoffs) {
   dates <- tryCatch(as.Date(cutoffs), error = function(e) as.Date(NA))
-  if (!length(dates) || length(dates) > 3 || anyNA(dates) || any(diff(dates) <= 0)) {
-    stop("Choose one to three valid cutoff dates in strictly increasing order.", call. = FALSE)
+  if (!length(dates) || length(dates) > 5 || anyNA(dates) || any(diff(dates) <= 0)) {
+    stop("Choose one to five valid cutoff dates in strictly increasing order.", call. = FALSE)
   }
   dates
 }

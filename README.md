@@ -150,3 +150,16 @@ See `VALIDATION.md` for the current tested behavior and limitations.
 
 References: [Shinylive](https://posit-dev.github.io/r-shinylive/),
 [GitHub Pages access](https://docs.github.com/en/enterprise-cloud@latest/pages/getting-started-with-github-pages/changing-the-visibility-of-your-github-pages-site).
+
+
+## Compare time periods
+
+Choose **Balanced numbers of observations** under **Compare time periods** to
+split the current filtered selection into 2–10 consecutive periods with similar
+observation counts. Each assay date stays intact; exact balance is not always
+possible. Counts are pooled across selected strains, so balance within strains
+or in independent experiments is not guaranteed. The summary shows dates and
+observations per period. This option is preserved in saved views and applies to
+period-based plots, AUC summaries and exports. Cutoff dates and equal numbers of
+assay dates remain available.
+

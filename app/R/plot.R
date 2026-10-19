@@ -1,4 +1,7 @@
 make_curve_plot <- function(d, summary, mode, uncertainty, colors) {
+  # Keep the chronological factor order across layers and faceted panels.
+  curve_order <- if (is.factor(d$curve)) levels(d$curve) else sort(unique(d$curve))
+  curve_order <- curve_order[curve_order %in% as.character(d$curve)]
   esc <- function(x) as.character(htmltools::htmlEscape(as.character(x)))
   d$tip <- paste0("<b>", esc(d$strain), " · ", esc(d$genotype), "</b><br>",
     esc(d$source), " · ", esc(d$date), " · experiment ", esc(d$expt), " · row ", esc(d$row),
@@ -38,7 +41,7 @@ make_curve_plot <- function(d, summary, mode, uncertainty, colors) {
       suppressWarnings(ggplot2::geom_point(data = summary, ggplot2::aes(x = hours, y = mean, color = curve, text = tip, key = observation_id), size = 2.5))
   }
   p + ggplot2::facet_wrap(~panel, ncol = if (length(unique(d$panel)) == 1) 1 else 3) +
-    ggplot2::scale_color_manual(values = colors, name = NULL) +
+    ggplot2::scale_color_manual(values = colors, limits = curve_order, breaks = curve_order, name = NULL) +
     ggplot2::scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 25), expand = ggplot2::expansion(mult = 0.03)) +
     ggplot2::labs(x = "Heat exposure (hours)", y = "Survival (%)") +
     ggplot2::theme_minimal(base_size = 12) +
@@ -50,13 +53,17 @@ make_curve_plot <- function(d, summary, mode, uncertainty, colors) {
 
 # ggplotly can take a group's legend entry from its error-bar trace, which has no visible
 # line, leaving a blank swatch. Show each group's entry on its first non-error-bar trace.
-legend_from_marks <- function(p) {
+legend_from_marks <- function(p, curve_order = NULL) {
   p <- plotly::plotly_build(p)
   seen <- character()
   for (i in seq_along(p$x$data)) {
     tr <- p$x$data[[i]]
     group <- if (!is.null(tr$legendgroup)) tr$legendgroup else tr$name
     if (is.null(group) || !nzchar(group) || !is.null(tr$error_y)) { p$x$data[[i]]$showlegend <- FALSE; next }
+    # Trace order depends on which curves occur in each panel/layer.
+    # Explicit ranks keep the legend in the color scale's chronological order.
+    rank <- match(tr$name, curve_order)
+    if (!is.na(rank)) p$x$data[[i]]$legendrank <- rank
     p$x$data[[i]]$showlegend <- !group %in% seen
     seen <- c(seen, group)
   }
