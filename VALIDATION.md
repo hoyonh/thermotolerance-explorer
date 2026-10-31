@@ -321,12 +321,22 @@ chain (silent error before input, value, ordinary error, recovery). The full
 404 and an in-page copy of the CSV, because Playwright cannot intercept that fetch
 there). Timings for the whole run: Chrome 134 s without the change, 146–149 s
 with it; WebKit 330 s (first plot about 47 s against 26 s in Chrome). Real Safari
-27 was checked by hand: loading and plotting work, but far more slowly than the
-WebKit timings suggest (minutes rather than seconds in everyday use). Safari automation
+27 was checked by hand: loading and plotting work, but lag more than the WebKit
+timings suggest, especially after several setting changes. Safari automation
 (safaridriver) never connected, so the full run was not repeated in real Safari.
 
-The Safari notices (start-up and in-app) now say Safari is very slow (minutes
-instead of seconds) and recommend Chrome or Edge; file pickers are no longer disabled.
+The Safari notices (start-up and in-app) now say Safari is noticeably slower and
+recommend Chrome or Edge; file pickers are no longer disabled.
 
 Also published: filter lists with explanations can be dragged off the plot
 (double-click the header to reset), and ⓘ icons open movable cards.
+
+## Safari workaround only in Safari (2026-11-01)
+
+In everyday use real Safari lags noticeably behind Chrome. The is now used only where it is needed: at start-up the app reads the browser
+through webR and uses `flat_reactive()` only in WebKit browsers other than Chrome and
+Edge (the same rule as the notices); Chrome, Edge and Firefox keep Shiny's `reactive()`.
+Checked: `tests/verify.R` runs the full app test in both modes and tests the browser rule
+(Safari, iPhone Chrome, desktop Chrome, Edge, Firefox). `tests/browser.mjs` passes in
+Chrome (139 s; 134 s before Safari support, 146–149 s with the workaround everywhere)
+and WebKit (346 s).

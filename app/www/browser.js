@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const note = document.createElement('div');
   note.className = 'notice browser-slow';
   note.setAttribute('role', 'status');
-  note.innerHTML = '<strong>Safari is very slow here.</strong> Loading files and redrawing plots can take minutes instead of seconds. ' +
-    'For everyday use, open this page in <strong>Chrome</strong> or <strong>Edge</strong>. On iPhone and iPad every browser uses Safari’s engine.';
+  note.innerHTML = '<strong>Safari is noticeably slower here.</strong> Loading files and updating plots lag. ' +
+    '<strong>Chrome</strong> or <strong>Edge</strong> is recommended. On iPhone and iPad every browser uses Safari’s engine.';
   card.insertBefore(note, card.querySelector('h2').nextSibling);
 });
 // Manuscript dataset: fetch the pinned CSV from GitHub and hand R the exact bytes, so it is
