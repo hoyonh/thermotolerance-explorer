@@ -303,3 +303,29 @@ browser rule, and removes it once the app (with its own notice) appears. Checked
 WebKit shows it within 3 s and keeps the in-app notice; Chrome shows neither. The
 README now names the supported browsers. App files unchanged. Real Safari 27 was
 not tested directly (Remote Automation is off).
+
+## Safari support (2026-11-01)
+
+Cause of the Safari failure (found with Codex in `safari_lab/`): Shiny evaluates a
+chain of reactives by nesting, and under webR each level uses so much of the
+JavaScript stack that WebKit's smaller stack overflows once a chain of three stops
+at `req()`. The browser build now sources `app/R/flat_reactive.R`, which computes
+each reactive in its own observer and stores the result (including `req()` and
+`validate()` conditions), so no chain is evaluated inside another. The local app
+is unchanged. Cost: reactives are recomputed even when nothing shows them.
+
+Checked: `tests/verify.R` passes with it, including a new test of a three-step
+chain (silent error before input, value, ordinary error, recovery). The full
+`tests/browser.mjs` run passes in Chrome and in Playwright WebKit 26.6
+(`THERMO_ENGINE=webkit`; in WebKit the manuscript button is pointed at a local
+404 and an in-page copy of the CSV, because Playwright cannot intercept that fetch
+there). Timings for the whole run: Chrome 134 s without the change, 146–149 s
+with it; WebKit 330 s (first plot about 47 s against 26 s in Chrome). Real Safari
+27 was checked by hand: loading and plotting work, but slowly. Safari automation
+(safaridriver) never connected, so the full run was not repeated in real Safari.
+
+The Safari notices (start-up and in-app) now say Safari works but is slow and
+recommend Chrome or Edge; file pickers are no longer disabled.
+
+Also published: filter lists with explanations can be dragged off the plot
+(double-click the header to reset), and ⓘ icons open movable cards.

@@ -6,9 +6,9 @@ browser. Analysis code and filter defaults are shared with the local/server app.
 ## Everyday use
 
 1. Open [the explorer](https://hoyonh.github.io/thermotolerance-explorer/) (or the local preview below).
-   Use **Chrome** or **Edge** on a computer. **Safari does not work**: the in-browser
-   R engine crashes in Safari's engine (posit-dev/r-shinylive#204), and so does every
-   browser on iPhone and iPad. Safari users see a notice instead of the app working.
+   **Chrome** or **Edge** on a computer is recommended. **Safari works but is slow**:
+   loading and plotting take about twice as long, and the same holds for every browser
+   on iPhone and iPad (they all use Safari's engine). Safari users see a notice saying so.
 2. Choose your **SKKU CSV**. Optionally choose the **JHU legacy CSV** too.
 3. Use **Example comparison** for the familiar SKKU default, or choose filters.
 4. Download plots, selected data, AUC/pairing results, or a saved-view JSON.
@@ -151,8 +151,14 @@ The R checks compare uploaded data against the existing loader and test empty,
 one-source, two-source, replacement, rejection, removal, saved views and exports.
 They read local project CSVs for verification only; those files are not copied
 into the app or site. Browser checks use the separate `tests/browser.mjs` script,
-which requires Playwright in `tools/` and a running preview. Its outputs stay in
-ignored `tests/artifacts/` and must not be published.
+which requires Playwright in `tools/` and a running preview. It uses Chrome;
+`THERMO_ENGINE=webkit` runs the same checks in Safari's engine (Playwright WebKit).
+Its outputs stay in ignored `tests/artifacts/` and must not be published.
+
+The browser build replaces Shiny's `reactive()` with `app/R/flat_reactive.R`, which
+computes each reactive in its own observer. Nested reactive evaluation overflows
+WebKit's call stack under webR (posit-dev/r-shinylive#204); this avoids it at the cost
+of recomputing reactives that nothing currently shows. The local app is unchanged.
 
 See `VALIDATION.md` for the current tested behavior and limitations.
 

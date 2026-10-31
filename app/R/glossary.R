@@ -55,13 +55,85 @@ field_choices <- function(field, values, g = glossary) {
 }
 
 # Dropdown shows the code with its meaning beneath; the chosen chip shows the code only.
+# An open list can be dragged off the plot (see glossary_script); its header says so and resets it.
 glossary_select_options <- list(dropdownParent = "body", dropdownClass = "glossary-dropdown",
+  plugins = list("remove_button", list(name = "dropdown_header", options = list(title = "\u283f Drag the list to move it off the plot \u00b7 double-click here to reset"))),
   render = I("{option: function(item, escape) { var lines = String(item.label).split('\\n');
     return '<div class=\"option glossary-option\"><div class=\"glossary-code\">' + escape(lines[0]) + '</div>' +
       lines.slice(1).map(function(x) { return '<div class=\"glossary-line\">' + escape(x) + '</div>'; }).join('') + '</div>'; },
   item: function(item, escape) { return '<div class=\"item\">' + escape(item.value) + '</div>'; }}"))
 
-info_label <- function(label, tip) tagList(label, span(class = "info-tip", tabindex = "0", role = "note", `aria-label` = tip, `data-tip` = tip, "i"))
+info_label <- function(label, tip) tagList(label, span(class = "info-tip", tabindex = "0", role = "button", `aria-label` = paste("About", label), `data-title` = label, `data-tip` = tip, "i"))
+
+# Moving explanations out of the way: drag an open filter list from anywhere on it (kept as a transform,
+# because selectize re-positions the list), and click an info icon to pin a draggable card.
+glossary_script <- tags$script(HTML(r"---(
+(function () {
+  function place(panel, dx, dy) {
+    panel.dataset.dx = dx; panel.dataset.dy = dy;
+    panel.style.transform = dx || dy ? 'translate(' + dx + 'px,' + dy + 'px)' : '';
+  }
+  var zones = '.glossary-dropdown, .tip-card-bar', resets = '.glossary-dropdown .selectize-dropdown-header, .tip-card-bar';
+  function panelOf(el) { return el.closest('.glossary-dropdown, .tip-card'); }
+  // A filter list moves from anywhere on it; a card from its title bar. A press that moves under 5 px
+  // stays a click (selecting a code). Capture phase, before selectize's handlers, so dragging neither
+  // selects, closes nor blurs the list.
+  window.addEventListener('mousedown', function (e) {
+    var zone = e.button === 0 && e.target.closest && e.target.closest(zones);
+    if (!zone || e.target.closest('.selectize-dropdown-header-close, .tip-card-close')) return;
+    var scroller = e.target.closest('.selectize-dropdown-content');
+    if (scroller && e.clientX > scroller.getBoundingClientRect().left + scroller.clientWidth) return;  // scrollbar
+    var panel = panelOf(zone);
+    e.preventDefault(); e.stopPropagation();
+    var x0 = e.clientX, y0 = e.clientY, dx = +panel.dataset.dx || 0, dy = +panel.dataset.dy || 0, moved = false;
+    function move(m) {
+      if (!moved && Math.abs(m.clientX - x0) + Math.abs(m.clientY - y0) < 5) return;
+      moved = true; panel.classList.add('dragging');
+      place(panel, dx + m.clientX - x0, dy + m.clientY - y0);
+    }
+    function up(u) {
+      window.removeEventListener('mousemove', move, true); window.removeEventListener('mouseup', up, true);
+      panel.classList.remove('dragging');
+      if (!moved) return;
+      u.stopPropagation();  // selectize selects an option on mouseup as well as click
+      function swallow(c) { c.preventDefault(); c.stopPropagation(); window.removeEventListener('click', swallow, true); }
+      window.addEventListener('click', swallow, true);
+      setTimeout(function () { window.removeEventListener('click', swallow, true); }, 0);
+    }
+    window.addEventListener('mousemove', move, true); window.addEventListener('mouseup', up, true);
+  }, true);
+  window.addEventListener('dblclick', function (e) {
+    var handle = e.target.closest && e.target.closest(resets);
+    if (handle) { e.stopPropagation(); place(panelOf(handle), 0, 0); }
+  }, true);
+  function closeCard(card) { card.tip.classList.remove('pinned'); card.tip.card = null; card.remove(); }
+  function toggleCard(tip) {
+    if (tip.card) return closeCard(tip.card);
+    var card = document.createElement('div'), bar = document.createElement('div'), title = document.createElement('span'),
+      close = document.createElement('button'), body = document.createElement('div');
+    card.className = 'tip-card'; card.setAttribute('role', 'dialog'); card.setAttribute('aria-label', tip.dataset.title);
+    bar.className = 'tip-card-bar'; title.textContent = tip.dataset.title;
+    close.className = 'tip-card-close'; close.type = 'button'; close.setAttribute('aria-label', 'Close'); close.textContent = '×';
+    close.addEventListener('click', function () { closeCard(card); tip.focus(); });
+    body.className = 'tip-card-body'; body.textContent = tip.dataset.tip;
+    bar.append(title, close); card.append(bar, body); card.tip = tip; tip.card = card;
+    var r = tip.getBoundingClientRect();
+    card.style.left = Math.max(8, Math.min(r.left - 8, window.innerWidth - 288)) + 'px';
+    card.style.top = Math.min(r.bottom + 6, window.innerHeight - 160) + 'px';
+    document.body.appendChild(card); tip.classList.add('pinned');
+  }
+  // The icon sits inside the filter's label: stop the click from also opening the filter.
+  document.addEventListener('click', function (e) {
+    var tip = e.target.closest && e.target.closest('.info-tip');
+    if (tip) { e.preventDefault(); e.stopPropagation(); toggleCard(tip); }
+  }, true);
+  document.addEventListener('keydown', function (e) {
+    var tip = e.target.closest && e.target.closest('.info-tip');
+    if (tip && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleCard(tip); }
+    if (e.key === 'Escape') document.querySelectorAll('.tip-card').forEach(closeCard);
+  });
+})();
+)---"))
 
 glossary_headings <- c(synchronization = "Synchronization", growth = "Growth plates", assay = "Assay plates", medium = "Media",
   configuration = "Incubator setup", `bacterial diet` = "Bacterial diet", term = "Terms")

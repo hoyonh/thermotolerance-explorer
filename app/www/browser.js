@@ -1,17 +1,16 @@
-// webR overflows WebKit's smaller call stack during app startup (posit-dev/r-shinylive#204),
-// so file selection would silently do nothing. Explain instead. All iOS/iPadOS browsers are WebKit.
+// Safari's engine runs webR at about half Chrome's speed (and needs R/flat_reactive.R to run at all,
+// posit-dev/r-shinylive#204), so point Safari users to a faster browser. All iOS/iPadOS browsers are WebKit.
 document.addEventListener('DOMContentLoaded', function() {
   const ua = navigator.userAgent;
   if (!/AppleWebKit/.test(ua) || /Chrome\/|Chromium\/|Edg\//.test(ua)) return;
   const card = document.querySelector('.file-card');
   if (!card) return;
   const note = document.createElement('div');
-  note.className = 'notice browser-unsupported';
-  note.setAttribute('role', 'alert');
-  note.innerHTML = '<strong>Safari is not supported yet.</strong> The analysis engine crashes in Safari, so selected files are never loaded. ' +
-    'Open this page in <strong>Chrome</strong> or <strong>Edge</strong>. On iPhone and iPad every browser uses Safari’s engine, so use a computer.';
+  note.className = 'notice browser-slow';
+  note.setAttribute('role', 'status');
+  note.innerHTML = '<strong>Safari works but is slow.</strong> Loading files and drawing plots take about twice as long as in ' +
+    '<strong>Chrome</strong> or <strong>Edge</strong>, which are recommended. On iPhone and iPad every browser uses Safari’s engine.';
   card.insertBefore(note, card.querySelector('h2').nextSibling);
-  card.querySelectorAll('input[type=file], #load_manuscript').forEach(function(input) { input.disabled = true; });
 });
 // Manuscript dataset: fetch the pinned CSV from GitHub and hand R the exact bytes, so it is
 // read and fingerprinted exactly like the same file chosen from disk.

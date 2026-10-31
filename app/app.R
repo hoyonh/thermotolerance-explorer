@@ -3,6 +3,7 @@ options(shiny.maxRequestSize = 50 * 1024^2)
 library(shiny)
 library(ggplot2)
 library(plotly)
+source("R/flat_reactive.R", local = TRUE)
 source("R/data.R", local = TRUE)
 source("R/plot.R", local = TRUE)
 source("R/pairing.R", local = TRUE)
@@ -26,15 +27,17 @@ ui <- function(request) {
   initial <- empty_browser_snapshot()
   all_data <- initial$data
   choices_for <- function(field) field_choices(field, all_data[[field]])
-  multi <- function(id, label, selected = NULL, tip = NULL) selectizeInput(id, if (is.null(tip)) label else info_label(label, tip), choices_for(id), selected = selected, multiple = TRUE,
-    options = c(list(placeholder = "All — type to filter", plugins = list("remove_button"), maxOptions = 1000),
-      if (id %in% names(glossary_categories)) glossary_select_options))
+  multi <- function(id, label, selected = NULL, tip = NULL) {
+    options <- list(placeholder = "All — type to filter", plugins = list("remove_button"), maxOptions = 1000)
+    if (id %in% names(glossary_categories)) options[names(glossary_select_options)] <- glossary_select_options
+    selectizeInput(id, if (is.null(tip)) label else info_label(label, tip), choices_for(id), selected = selected, multiple = TRUE, options = options)
+  }
   date_limits <- browser_dates(all_data)
   start <- default_filter_selection(all_data, "SKKU")
   htmltools::attachDependencies(fluidPage(
     tags$head(tags$title("Thermotolerance Explorer"),
       
-      tags$link(rel = "stylesheet", href = "style.css"), tags$script(src = "browser.js")),
+      tags$link(rel = "stylesheet", href = "style.css"), tags$script(src = "browser.js"), glossary_script),
     div(class = "topbar", div(div(class = "eyebrow", "THERMO / DATA WORKSPACE"), h1("Thermotolerance explorer"),
       p("Follow the curve. Find the experiment behind it.")), span(class = "local-badge", "BROWSER · LOCAL FILES")),
     div(class = "card file-card",

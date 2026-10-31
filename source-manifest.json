@@ -4,12 +4,13 @@
   "R/browser_data.R": "b7f9c98eab50da4222c88c9be9ad0b58fff26e62052f96466220460ddca06ff2",
   "R/browser_plots.R": "455dd7ccc282cc095a328b21154eb6c62f8a8d4c52847fe3b21c71296ce5aec8",
   "R/data.R": "ba5add10e0d471d137d5eb77e3dfbb0fff0c9fe862275319b6c4dd2fc49b32a1",
-  "R/glossary.R": "1c1dc629e6460248b45d40624f246f498e8a0ccca7c590fda776c34462e39fd0",
+  "R/flat_reactive.R": "b7c8a27e14435c4acbf35d738d3392da87ba9b0682f64f70b25b254c46158042",
+  "R/glossary.R": "8791ea415d613e950ffaf311b5e64ea5cc43e49737484ad43cf928108cba1b36",
   "R/glossary_data.R": "f919161dd8eb404b3793cdefce48db6925f930e8b7264bff4ff750912b53b3d5",
   "R/pairing.R": "5f8a1e3f55862bc3764490cecdc0d4b42f73b798423fb9699569b366fc365d1f",
   "R/pairing_module.R": "a7420d1c2b652b4ad536ed4f928c33666ac3f61160f9f7186ca710c3c77eff66",
   "R/plot.R": "5df988a2d37d8b9a224d2f78ba69ce9433db54225cde0ec4785e8807d50937bd",
-  "app.R": "58fd4c55b872f9a2d4ec667ed1c2512ec12bf7c00cd87d3940db0bdeb26affff",
-  "www/browser.js": "4a47e82a5adf61195800ab7b07685b79ca5a335b678b26f42c4f8b0b20506932",
-  "www/style.css": "1be274e286209f2ac904af67ddcbc4c734949e37bc6560fe5320b2fbb2ad4e39"
+  "app.R": "6e8aae61da928dfdbb8f686d7ba9f9160bbd7912059dd4ab3bcd787810b77b3f",
+  "www/browser.js": "ce8ca40a25e9b8b4bf7312274e2ff333199851f1ba29a2ae6ca5656c2cdaae96",
+  "www/style.css": "6072abbe6aba9fb86d9922e4073e815956220c1ba237f225ab0438ab3237caf1"
 }
