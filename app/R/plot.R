@@ -53,9 +53,10 @@ make_curve_plot <- function(d, summary, mode, uncertainty, colors) {
 
 # ggplotly can take a group's legend entry from its error-bar trace, which has no visible
 # line, leaving a blank swatch. Show each group's entry on its first non-error-bar trace.
-legend_from_marks <- function(p, curve_order = NULL) {
+legend_from_marks <- function(p, curve_order = NULL, mean_symbols = FALSE) {
   p <- plotly::plotly_build(p)
   seen <- character()
+  legend_traces <- list()
   for (i in seq_along(p$x$data)) {
     tr <- p$x$data[[i]]
     group <- if (!is.null(tr$legendgroup)) tr$legendgroup else tr$name
@@ -64,8 +65,22 @@ legend_from_marks <- function(p, curve_order = NULL) {
     # Explicit ranks keep the legend in the color scale's chronological order.
     rank <- match(tr$name, curve_order)
     if (!is.na(rank)) p$x$data[[i]]$legendrank <- rank
-    p$x$data[[i]]$showlegend <- !group %in% seen
+    p$x$data[[i]]$showlegend <- !mean_symbols && !group %in% seen
+    if (mean_symbols && !group %in% seen) {
+      # A separate, coordinate-free trace supplies a consistent key without
+      # changing the lines, points, hover targets or errors in the actual plot.
+      # Sharing legendgroup preserves toggling of every layer/panel in the curve.
+      color <- if (!is.null(tr$line$color)) tr$line$color else tr$marker$color
+      legend_traces[[length(legend_traces) + 1L]] <- list(
+        type = "scatter", mode = "lines+markers", x = NA_real_, y = NA_real_,
+        name = tr$name, legendgroup = group, showlegend = TRUE,
+        legendrank = if (is.na(rank)) length(seen) + 1L else rank,
+        line = list(color = color, width = 2, dash = "solid"),
+        marker = list(color = color, size = 6, symbol = "circle"),
+        hoverinfo = "skip", xaxis = tr$xaxis, yaxis = tr$yaxis)
+    }
     seen <- c(seen, group)
   }
+  p$x$data <- c(p$x$data, legend_traces)
   p
 }

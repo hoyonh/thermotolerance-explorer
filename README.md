@@ -62,6 +62,11 @@ upload/download endpoints. The app does not save CSVs in persistent browser
 storage. Downloaded exports remain on the computer, so handle those appropriately
 on shared computers.
 
+The code meanings in `data/glossary.csv` and `data/config_glossary.csv` are the
+one exception: the build converts them into `app/R/glossary_data.R`, so the
+glossary (including media recipes) is public on the site. Edit the CSVs and
+rebuild to update it.
+
 GitHub Pages normally makes the app interface and source code public. Local CSV
 selection keeps experimental data out of the publication, but is not a login
 system. If the interface itself must be restricted, use eligible private Pages

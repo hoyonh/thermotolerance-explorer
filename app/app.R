@@ -9,9 +9,11 @@ source("R/pairing.R", local = TRUE)
 source("R/pairing_module.R", local = TRUE)
 source("R/auc.R", local = TRUE)
 source("R/auc_module.R", local = TRUE)
+source("R/glossary.R", local = TRUE)
 source("R/browser_data.R", local = TRUE)
 source("R/browser_plots.R", local = TRUE)
 paired_trend_plot <- browser_paired_plot(paired_trend_plot)
+source("R/glossary_data.R", local = TRUE)
 pairing_cutoff <- as.Date("2026-09-01")
 # Manual time-period cutoffs: up to five, giving up to six periods.
 cutoff_ids <- c("period_cutoff", paste0("period_cutoff", 2:5))
@@ -23,9 +25,10 @@ facet_choices <- c("Pooled view" = "none", "By experiment / date" = "run_id", "B
 ui <- function(request) {
   initial <- empty_browser_snapshot()
   all_data <- initial$data
-  choices_for <- function(field) sort(unique(as.character(all_data[[field]])))
-  multi <- function(id, label, selected = NULL) selectizeInput(id, label, choices_for(id), selected = selected, multiple = TRUE,
-    options = list(placeholder = "All — type to filter", plugins = list("remove_button"), maxOptions = 1000))
+  choices_for <- function(field) field_choices(field, all_data[[field]])
+  multi <- function(id, label, selected = NULL, tip = NULL) selectizeInput(id, if (is.null(tip)) label else info_label(label, tip), choices_for(id), selected = selected, multiple = TRUE,
+    options = c(list(placeholder = "All — type to filter", plugins = list("remove_button"), maxOptions = 1000),
+      if (id %in% names(glossary_categories)) glossary_select_options))
   date_limits <- browser_dates(all_data)
   start <- default_filter_selection(all_data, "SKKU")
   htmltools::attachDependencies(fluidPage(
@@ -69,8 +72,10 @@ ui <- function(request) {
           div(class = "hint period-summary", uiOutput("period_summary"))),
         checkboxGroupInput("sources", "Data sources", c("SKKU · 2024–2026" = "SKKU", "JHU · legacy" = "JHU"), selected = "SKKU"),
         multi("genotype", "Genotype", c("wild type", "sma-9(wk55)")), multi("strain", "Strain"),
-        multi("culture", "Culture temperature", start$culture), multi("bacteria", "Bacterial diet", start$bacteria),
-        multi("config", "Experimental configuration", start$config), multi("sync", "Synchronization", start$sync),
+        multi("culture", "Culture temperature", start$culture),
+        multi("bacteria", "Bacterial diet", start$bacteria, "The bacteria on the plates. OP50 and OP50-1 are the standard E. coli food strains; other codes mark mixed or contaminated lawns. Open the list to see what each code means."),
+        multi("config", "Experimental configuration", start$config, "Codes such as NS s-NGM EPSK-1 give the synchronization, growth plate and assay plate. Every assay used the standard incubator setup (inner container on a rack) unless the code is bare or cfloor. Open the list to see each code decoded; the Glossary tab has full definitions."),
+        multi("sync", "Synchronization", start$sync, "How the worms were brought to the same developmental stage before the assay. The same code begins each configuration code (NS in NS s-NGM EPSK-1). Open the list to see what each code means."),
         div(class = "control-group", div(class = "group-title", "Dates, hours & experiments"),
           dateRangeInput("dates", "Assay dates", start = date_limits[1], end = date_limits[2]),
           div(class = "hint date-coverage", uiOutput("date_coverage"), actionLink("dates_full", "Use full range")),
@@ -111,6 +116,7 @@ ui <- function(request) {
             textOutput("excluded_count"), tableOutput("plate_detail")),
           tabPanel("Observations", div(class = "table-controls", textInput("row_search", "Search selected rows", placeholder = "Strain, date, note, experiment…"), numericInput("row_page", "Page (25 rows)", 1, min = 1, step = 1)), textOutput("row_count"), tableOutput("rows")),
           tabPanel("Summary", tableOutput("summary_table"), p(class = "hint", "First 100 rows shown. Download Summary CSV for the complete table.")),
+          tabPanel("Glossary", uiOutput("glossary_tab")),
           tabPanel("Methods & provenance",
             h3("What the curves mean"),
             p("Survival = 100 × alive / (alive + dead). Ruptured, suicide and missing counts are retained for inspection but excluded from this denominator, matching the existing plotting code. Lines join observed times; they are not fitted survival models."),
@@ -223,7 +229,8 @@ server <- function(input, output, session) {
   })
   output$curves <- renderPlotly({
     p <- legend_from_marks(ggplotly(plot_object(), tooltip = "text", source = "thermo"),
-      curve_order = plot_object()$scales$get_scales("colour")$breaks)
+      curve_order = plot_object()$scales$get_scales("colour")$breaks,
+      mean_symbols = identical(input$mode, "mean"))
     p <- layout(p, legend = list(orientation = "h", y = -0.16, traceorder = "normal"), margin = list(b = 100), hovermode = "closest")
     p <- config(p, displaylogo = FALSE, toImageButtonOptions = list(format = "svg", filename = "thermotolerance_curves"))
     event_register(p, "plotly_click")
@@ -291,6 +298,7 @@ server <- function(input, output, session) {
     if (!nrow(row)) return(p("The selected observation is excluded or outside the current filters."))
     tagList(h3(paste(row$strain, "·", row$date, "·", row$hours, "hours")),
       p(paste(row$genotype, "|", row$culture, "|", row$bacteria, "|", row$config)),
+      if (length(meaning <- describe_code(glossary, "config", row$config))) p(class = "hint", paste(meaning, collapse = " · ")),
       p(sprintf("Survival %.2f%% · alive %s · dead %s · ruptured %s · suicide %s · missing %s", row$survival_pct, row$alive, row$dead, row$Rup, row$suicide, row$missing)),
       p(paste("Original strain:", row$raw_strain, "· original diet:", row$raw_bacteria)),
       p(paste("Source:", source_files[[row$source]], "· data row", row$source_row, "· experiment", row$expt, "· row", row$row)),
@@ -327,6 +335,7 @@ server <- function(input, output, session) {
     d <- searched_rows(); p <- safe_page(input$row_page, ceiling(nrow(d) / 25))
     format_table_dates(d[seq_len(nrow(d)) %in% seq((p - 1) * 25 + 1, p * 25), detail_columns, drop = FALSE])
   }, digits = 2, striped = TRUE, spacing = "s", na = "—")
+  output$glossary_tab <- renderUI(glossary_ui(glossary, dataset()$data$config))
   output$summary_table <- renderTable(head(summary(), 100), digits = 2, striped = TRUE, spacing = "s", na = "—")
   reset_filters <- function(example) {
     d <- dataset()$data
@@ -371,7 +380,7 @@ server <- function(input, output, session) {
     updateCheckboxGroupInput(session, "sources", choices = setNames(names(next_parts), names(next_parts)), selected = intersect(show, names(next_parts)))
     start <- default_filter_selection(d, names(next_parts))
     for (field in c("genotype", "strain", "culture", "bacteria", "config", "sync")) {
-      updateSelectizeInput(session, field, choices = sort(unique(d[[field]])),
+      updateSelectizeInput(session, field, choices = field_choices(field, d[[field]]),
         selected = if (field %in% names(start)) start[[field]] else character())
     }
     updateSelectizeInput(session, "runs", choices = sort(unique(d$run_id)), selected = character(), server = TRUE)
@@ -436,7 +445,7 @@ server <- function(input, output, session) {
         is.null(s$period_n) || as.integer(s$period_n) %in% 2:10)
       for (field in c("genotype", "strain", "culture", "bacteria", "config", "sync", "runs")) {
         available <- if (field == "runs") sort(unique(dataset()$data$run_id)) else sort(unique(dataset()$data[[field]]))
-        updateSelectizeInput(session, field, choices = union(available, s[[field]]), selected = s[[field]] %||% character(), server = field == "runs")
+        updateSelectizeInput(session, field, choices = if (field == "runs") union(available, s[[field]]) else field_choices(field, union(available, s[[field]])), selected = s[[field]] %||% character(), server = field == "runs")
       }
       updateCheckboxGroupInput(session, "sources", selected = s$sources %||% character())
       updateDateRangeInput(session, "dates", start = s$dates[1], end = s$dates[2])

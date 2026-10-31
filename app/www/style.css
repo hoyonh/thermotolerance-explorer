@@ -68,6 +68,18 @@ th { color:#54706d; font-weight:650; }
 .shiny-output-error-validation { padding:45px 20px; color:#7a6243; }
 .paired-change { background:#e8f2ee; color:#24574b; padding:13px 16px; border-radius:5px; font-size:13px; }
 .paired-card .tab-content { overflow-x:auto; }
+.control-label { position:relative; }
+.info-tip { display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; margin-left:5px; border:1px solid #a9c8bf; border-radius:50%; color:var(--teal); font-size:9px; font-weight:700; font-style:italic; font-family:Georgia,serif; cursor:help; vertical-align:1px; }
+.info-tip:hover,.info-tip:focus { background:#e8f2ee; outline:none; }
+.info-tip:hover::after,.info-tip:focus::after { content:attr(data-tip); position:absolute; left:0; top:calc(100% + 5px); z-index:30; width:240px; max-width:calc(100vw - 48px); padding:9px 11px; border-radius:6px; background:var(--ink); color:#fff; font:400 11px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; letter-spacing:0; box-shadow:0 4px 14px rgba(33,58,73,.18); }
+.glossary-dropdown { min-width:420px; max-width:calc(100vw - 32px); }
+.glossary-dropdown .selectize-dropdown-content { max-height:420px; }
+.glossary-option { padding:2px 0; }
+.glossary-code { font-weight:650; color:var(--ink); }
+.glossary-line { color:var(--muted); font-size:11px; line-height:1.45; }
+.glossary-dropdown .active .glossary-line { color:#45605a; }
+.glossary-table { margin-bottom:22px; }
+.glossary-table code { color:var(--ink); background:#eef3f1; white-space:nowrap; }
 @media(max-width:1000px) { .container-fluid { padding:0 16px; } .workspace { grid-template-columns:235px minmax(0,1fr); gap:15px; } .plot-controls { grid-template-columns:repeat(2,minmax(0,1fr)); } .metric { padding:14px; } .card-heading { display:block; } .card-heading .hint { display:block; margin-top:8px; } }
 @media(max-width:720px) { .workspace { display:block; } .filters { position:static; max-height:none; margin-bottom:20px; } .metrics { gap:7px; } .metric { padding:12px 9px; } .metric-value { font-size:23px; } .metric-label { font-size:9px; } .local-badge { display:none; } h1 { font-size:26px; } .card { padding:14px; } .footer span { display:none; } }
 

@@ -268,3 +268,26 @@ whose first traces belong to the last period, checking both ggplot scale order
 and Plotly legend ranks/uniqueness. The browser adapter suite passed and the
 static site was rebuilt and audited. No live-browser check or deployment was
 performed for this update.
+
+## Consistent mean-curve legend symbols (2026-10-19)
+
+Mean curves now uses coordinate-free legend traces with a line and circular
+point for every curve. These share the actual traces' legend groups and retain
+chronological ranks; data traces and hover targets are unchanged. Other display
+modes retain their existing legend behavior. The browser adapter tests passed,
+including symbol consistency, ranks, group linkage and unchanged data traces
+across faceted plots. Interactive clicking was not tested in a live browser.
+
+## Glossary for condition codes (2026-10-31)
+
+Bacterial diet, configuration and synchronization filters now show each code's
+plain-language meaning beneath it in the dropdown (searchable by meaning), with an
+info tip beside each filter name and a Glossary tab. A configuration decodes into
+incubator setup, synchronization, growth plate and assay plate. Meanings come from
+`data/glossary.csv` and `data/config_glossary.csv`, embedded by `prepare.py` as
+`app/R/glossary_data.R` because the site carries no CSVs. Filter values remain the
+original codes, so saved views and exports are unchanged. `tests/verify.R` checks
+the embedded glossary equals the CSVs; the local `verify_glossary.R` checks every
+code in the data has a meaning. `tests/verify.R`, `tests/browser.mjs` and
+`audit.py` passed; the dropdown, tips and Glossary tab were checked in headless
+Chrome on the exported site. Deployed together with the mean-curve legend change.
