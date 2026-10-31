@@ -6,6 +6,9 @@ browser. Analysis code and filter defaults are shared with the local/server app.
 ## Everyday use
 
 1. Open [the explorer](https://hoyonh.github.io/thermotolerance-explorer/) (or the local preview below).
+   Use **Chrome** or **Edge** on a computer. **Safari does not work**: the in-browser
+   R engine crashes in Safari's engine (posit-dev/r-shinylive#204), and so does every
+   browser on iPhone and iPad. Safari users see a notice instead of the app working.
 2. Choose your **SKKU CSV**. Optionally choose the **JHU legacy CSV** too.
 3. Use **Example comparison** for the familiar SKKU default, or choose filters.
 4. Download plots, selected data, AUC/pairing results, or a saved-view JSON.

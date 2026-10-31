@@ -291,3 +291,15 @@ the embedded glossary equals the CSVs; the local `verify_glossary.R` checks ever
 code in the data has a meaning. `tests/verify.R`, `tests/browser.mjs` and
 `audit.py` passed; the dropdown, tips and Glossary tab were checked in headless
 Chrome on the exported site. Deployed together with the mean-curve legend change.
+
+## Safari notice during start-up (2026-10-31)
+
+Re-tested Safari support on the live site with Playwright WebKit 26.6: with the
+in-app notice bypassed and file pickers re-enabled, choosing the SKKU CSV still
+fails (`RangeError: Maximum call stack size exceeded`; posit-dev/r-shinylive#204
+still applies). Safari users previously saw the notice only after the 10–30 s
+start-up. `loading.html` now shows the same notice immediately under the same
+browser rule, and removes it once the app (with its own notice) appears. Checked:
+WebKit shows it within 3 s and keeps the in-app notice; Chrome shows neither. The
+README now names the supported browsers. App files unchanged. Real Safari 27 was
+not tested directly (Remote Automation is off).
