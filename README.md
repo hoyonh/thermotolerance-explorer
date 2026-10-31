@@ -6,9 +6,9 @@ browser. Analysis code and filter defaults are shared with the local/server app.
 ## Everyday use
 
 1. Open [the explorer](https://hoyonh.github.io/thermotolerance-explorer/) (or the local preview below).
-   **Chrome** or **Edge** on a computer is recommended. **Safari works but is slow**:
-   loading and plotting take about twice as long, and the same holds for every browser
-   on iPhone and iPad (they all use Safari's engine). Safari users see a notice saying so.
+   Use **Chrome** or **Edge** on a computer. **Safari works but is very slow**: loading
+   and redrawing can take minutes instead of seconds, and the same holds for every
+   browser on iPhone and iPad (they all use Safari's engine). Safari users see a notice saying so.
 2. Choose your **SKKU CSV**. Optionally choose the **JHU legacy CSV** too.
 3. Use **Example comparison** for the familiar SKKU default, or choose filters.
 4. Download plots, selected data, AUC/pairing results, or a saved-view JSON.
