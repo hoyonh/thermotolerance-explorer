@@ -1,8 +1,7 @@
-library/
-site/
-tools/node_modules/
+# Fixtures and test outputs are derived from private experimental CSVs. Never publish them.
+tests/fixtures/
 tests/artifacts/
-*.csv
-*.rds
-*.RData
+node_modules
 .DS_Store
+# CSVs are never added by accident. An approved dataset is added deliberately (git add -f) and listed in dist/data/manifest.json.
+*.csv

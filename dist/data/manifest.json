@@ -1,0 +1,6 @@
+{
+  "manifest_version": 1,
+  "note": "No data are bundled yet. Public release scope and timing are pending co-author approval. Each dataset entry names a CSV in this folder, the data source slot it fills (SKKU or JHU), and the SHA-256 of the file; the viewer refuses a file whose hash differs.",
+  "datasets": [],
+  "glossary": []
+}

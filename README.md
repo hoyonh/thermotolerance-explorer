@@ -1,181 +1,79 @@
-# Thermotolerance Explorer — browser version
+# Thermotolerance Explorer (JavaScript)
 
-This is a separate Shinylive build of the existing explorer. R runs in the
-browser. Analysis code and filter defaults are shared with the local/server app.
+> **DRAFT, local branch `js-viewer`. Not published.** No data are bundled. Any public data release needs
+> co-author approval of scope and timing first. The previous Shinylive version is preserved at tag `shinylive-final`.
 
-## Everyday use
+A browser-only viewer for *C. elegans* acute-thermotolerance survival data. Everything is computed in the
+browser; nothing is uploaded. No framework and no build step: `dist/` is the site.
 
-1. Open [the explorer](https://hoyonh.github.io/thermotolerance-explorer/) (or the local preview below).
-   **Chrome** or **Edge** on a computer is recommended. **Safari works but is noticeably
-   slower**: loading files and updating plots lag, and the same holds for every browser
-   on iPhone and iPad (they all use Safari's engine). Safari users see a notice saying so.
-2. Choose your **SKKU CSV**. Optionally choose the **JHU legacy CSV** too.
-3. Use **Example comparison** for the familiar SKKU default, or choose filters.
-4. Download plots, selected data, AUC/pairing results, or a saved-view JSON.
+## Using it
 
-Whenever the loaded data changes (a file is chosen, replaced or removed), filters
-reset to the defaults: 20°C culture, OP50-1 diet, standard configuration and
-standard synchronization, with OP50 added while the JHU file (all OP50) is
-loaded. Defaults missing from the data are left blank (all). Manual exclusions
-are cleared so row-based exclusions are not silently carried over to changed
-data. **Clear filters** still selects everything.
-
-Only the CSV you chose most recently is shown at first. The other file stays
-loaded: tick it under **Data sources** to view both together. The condition
-defaults cover every loaded file, so ticking the second source shows its data.
-When both are shown, the notice above the plot suggests examining them
-separately (they come from different laboratories and years). Removing a file
-shows the one that remains. A JHU-only session is also supported. Invalid files show
-an error and leave the last valid dataset in place.
-
-To update your data, choose the newer CSV. No website rebuild, SSH, screen or R
-restart is needed. A browser refresh clears the loaded files; select them again.
-Saved-view JSON files store settings, not data. Load your CSVs before restoring a
-view. Fingerprint warnings identify changed or missing source files.
-
-## Manuscript dataset
-
-**Load manuscript dataset** (under the file pickers) loads `data/phenotypes/thermotolerance.csv`
-from `hoyonh/tgf-beta-thermotolerance-manuscript` as the SKKU file. It is pinned to commit
-`d6cc0ba` (the last change to that CSV), so it always loads the same data even if the
-repository changes later. The browser fetches the file directly from GitHub; the bytes are
-read exactly as a downloaded copy, so saved views match either way. No CSV is stored in this
-site or repository.
-
-This works only once the manuscript repository is public. Until then the button explains
-that, and you can load the file by hand:
-
-1. Sign into GitHub with access to the private manuscript repository.
-2. Open [thermotolerance.csv](https://github.com/hoyonh/tgf-beta-thermotolerance-manuscript/blob/d6cc0bad1f24a8d96149c7c76753d9c150a877b4/data/phenotypes/thermotolerance.csv) and click **Download raw file**.
-3. In the explorer, click **Choose CSV** under **SKKU CSV** and select the downloaded file.
-
-The file already uses the SKKU columns; its raw `OP50` values use the existing SKKU
-normalization to `OP50-1`. It replaces the SKKU file for that session. To point the button
-at a newer version (for example a release tag), change the commit in `prepare.py` (two
-links), rebuild, validate and republish. The CSV must not be committed to the public app repo.
-
-## Privacy and access
-
-### Data handling
-
-No experimental CSVs are bundled with this site. File selection is handled by
-Shinylive inside the browser; the application does not send selected data to a
-remote data server. Browser service-worker requests simulate Shiny's local file
-upload/download endpoints. The app does not save CSVs in persistent browser
-storage. Downloaded exports remain on the computer, so handle those appropriately
-on shared computers.
-
-The code meanings in `data/glossary.csv` and `data/config_glossary.csv` are the
-one exception: the build converts them into `app/R/glossary_data.R`, so the
-glossary (including media recipes) is public on the site. Edit the CSVs and
-rebuild to update it.
-
-GitHub Pages normally makes the app interface and source code public. Local CSV
-selection keeps experimental data out of the publication, but is not a login
-system. If the interface itself must be restricted, use eligible private Pages
-or another authenticated static host. Do not commit the parent Thermo_SKKU2
-repository or its data to publish this app. Keep private CSVs in your approved lab
-file-sharing location so they can be selected on meeting-room computers.
-
-## Preview on this Mac
-
-The browser build is in `site/`. In a Mac Terminal, run:
+Open the published page (URL to be added) in any current browser, or run it locally:
 
 ```sh
-cd /Users/hoyon/Desktop/Thermo_SKKU2
-python3 thermotolerance_explorer_shinylive/preview.py
+python3 tools/preview.py --open
 ```
 
-Open **http://127.0.0.1:8765**. This serves static files only; all analysis runs in
-the browser. Keep the terminal open during this local preview. Once published,
-visitors use the website address and do not run this command. Opening index.html
-by double-clicking is not supported because Shinylive needs HTTP/HTTPS and a
-service worker. First loading downloads R and its packages and may take time.
+Data come from one of three places, all through the same CSV loader:
 
-## Build or refresh from the original app
+1. **Bundled data**, if the site ships any: listed in `dist/data/manifest.json`; the first entry marked `default`
+   opens on load and other entries are chosen from a menu. Each file is checked against its SHA-256.
+2. **Your own CSV** (SKKU CSV, optional JHU legacy CSV, optional glossary CSVs) with the file pickers.
+3. **Project data folder**, only when started with `tools/preview.py` next to a `data/` folder.
 
-The generated `app/` directory contains allowlisted shared code and browser-only
-adapters. Do not edit it directly. Edit `browser/` for file-loading/browser
-behavior; edit the original explorer's R functions for scientific changes.
+With no bundled data (the current state) the viewer asks for your CSV, as the Shinylive version did.
+
+## Bundled data (not yet used)
+
+`dist/data/manifest.json`:
+
+```json
+{ "manifest_version": 1,
+  "datasets": [ { "id": "ms", "label": "Manuscript-related SKKU data", "source": "SKKU",
+                  "file": "skku_manuscript.csv", "sha256": "<64 hex>", "default": true } ],
+  "glossary": [ "glossary.csv", "config_glossary.csv" ] }
+```
+
+CSVs are git-ignored; an approved file is added deliberately with `git add -f`. `tools/audit_data.py` (run by the
+publishing workflow) fails if the site contains a CSV the manifest does not list, or one whose hash differs.
+Anything in `dist/` is public, whether or not the interface shows it by default.
+
+## Plate-quality filter
+
+The sidebar option **Apply existing analysis exclusions** is on by default and applies the manuscript's rules (listed under
+Methods in the app): a plate is kept only if its total across all five count categories (alive, dead, ruptured, suicide,
+missing) is at least 15, and SKKU plates with the exact note "10 total" are dropped; JHU legacy exclusions are listed in
+the Methods tab. Records are never deleted from the data. Switching the option off includes every valid plate. In the
+manuscript data (20 °C, OP50, standard configuration, 2-3.5 h) that adds 19 small plates (10 or 11 worms) across 14
+genotypes and moves individual genotype AUCs by up to about 1 percentage point. Figures and tests use the default (on).
+
+## Checks
 
 ```sh
-cd /Users/hoyon/Desktop/Thermo_SKKU2
-Rscript --vanilla thermotolerance_explorer_shinylive/build.R
+npm test                 # unit + numerical comparison with the R code + interface modules (Node 20+)
+npm install              # once, for the browser checks
+npm run test:browser     # the real page in Chrome (test:safari for WebKit)
+npm run test:rowfx        # row-position view vs R (needs R, the lab R explorer next to this folder, and the CSVs)
+npm run test:bundled     # manifest behaviour on a plain static server (test:bundled:safari for WebKit)
+THERMO_MANUSCRIPT_CSV=<thermotolerance.csv> npm run test:manuscript   # default view reproduces the manuscript's AUCnorm (needs R)
 ```
 
-The build copies the shared analysis modules byte-for-byte, adapts the existing
-UI/server with checked transformations, exports static files, and audits the
-published input list. It fails if the expected source layout changes or extra
-files have appeared in `app/`. It never copies the project data directory.
-`source-manifest.json` records the generated app hashes. Shinylive assets are
-pinned to 0.10.12; this initial build uses shinylive 0.5.0. Package binaries may
-have versions different from the desktop R installation; rerun validation after
-changing the runtime or dependencies.
+`npm test` needs reference output generated from the lab's R code and CSVs (`npm run fixtures`, needs R and the
+private data). Those fixtures and `tests/artifacts/` are git-ignored and must never be published.
 
-For a new build machine, install R, Python 3 and the `shinylive` R package first.
-The build may download assets to Shinylive's standard user cache. `library/` in
-this folder is a local build dependency directory and must not be published.
+Last local run (2026-11-22): 55 unit, 1,429 numerical (R), 161 module, 116 browser (Chrome and WebKit), 19 bundled-data
+(Chrome and WebKit), 73 manuscript-AUCnorm and 291 row-position (R) checks, all passing.
 
-## Publish to GitHub Pages
+## Status and known limits
 
-The live app uses the separate `hoyonh/thermotolerance-explorer` repository,
-containing only these publication files from this folder:
-
-- `app/`
-- `source-manifest.json`
-- `build.R`, `audit.py` and `loading.html` (the start-up message under the loading spinner)
-- `.github/workflows/pages.yml`
-- `.gitignore`, this README and `VALIDATION.md`
-
-Do not upload `data/`, any CSV, `library/`, `tools/`, or `tests/artifacts/`.
-The last directory can contain private test exports/screenshots.
-
-In the new repository, select **Settings → Pages → Source: GitHub Actions**.
-Then select **Actions → Publish browser explorer → Run workflow**. The workflow
-exports the already generated app (`--export-only`), audits it, and publishes only
-`site/`. Its displayed deployment URL is the address visitors use.
-
-After future code changes, rebuild locally, validate, copy the updated `app/` and
-`source-manifest.json` into that separate repository, and run the workflow again.
-CSV updates do not require this process. For another static host, publish only
-the audited `site/` directory.
-
-## Validation
-
-```sh
-Rscript --vanilla thermotolerance_explorer_shinylive/tests/verify.R
-python3 thermotolerance_explorer_shinylive/audit.py
-```
-
-The R checks compare uploaded data against the existing loader and test empty,
-one-source, two-source, replacement, rejection, removal, saved views and exports.
-They read local project CSVs for verification only; those files are not copied
-into the app or site. Browser checks use the separate `tests/browser.mjs` script,
-which requires Playwright in `tools/` and a running preview. It uses Chrome;
-`THERMO_ENGINE=webkit` runs the same checks in Safari's engine (Playwright WebKit).
-Its outputs stay in ignored `tests/artifacts/` and must not be published.
-
-In Safari (and every browser on iPhone and iPad) the browser build replaces Shiny's
-`reactive()` with `flat_reactive()` from `app/R/flat_reactive.R`, which computes each
-reactive in its own observer. Nested reactive evaluation overflows WebKit's call stack
-under webR (posit-dev/r-shinylive#204); this avoids it at the cost of recomputing
-reactives that nothing currently shows. Chrome, Edge and Firefox keep Shiny's own
-`reactive()`. The local app is unchanged.
-
-See `VALIDATION.md` for the current tested behavior and limitations.
-
-References: [Shinylive](https://posit-dev.github.io/r-shinylive/),
-[GitHub Pages access](https://docs.github.com/en/enterprise-cloud@latest/pages/getting-started-with-github-pages/changing-the-visibility-of-your-github-pages-site).
-
-
-## Compare time periods
-
-Choose **Balanced numbers of observations** under **Compare time periods** to
-split the current filtered selection into 2–10 consecutive periods with similar
-observation counts. Each assay date stays intact; exact balance is not always
-possible. Counts are pooled across selected strains, so balance within strains
-or in independent experiments is not guaranteed. The summary shows dates and
-observations per period. This option is preserved in saved views and applies to
-period-based plots, AUC summaries and exports. Cutoff dates and equal numbers of
-assay dates remain available.
-
+- The analyses are checked against R. The **row-position view** (`rowfx.js`) was compared with an independent R calculation
+  (`tools/ref_rowfx.R`, normalisation and filters from the lab R explorer) and with the values behind Supplementary Fig. 14:
+  row means, within-genotype and within-genotype-and-run deviations, plate counts and exclusion rules agree to 1e-13 (`npm run test:rowfx`,
+  291 checks). Plates recorded at a non-integer row (one at row 5.5 in the SKKU data) are left out of the row comparison, as in the
+  figure, and the page says so. The view is descriptive: subtracting a genotype's mean does not show that strain, run or date
+  differences cannot contribute to a row pattern.
+- AUCnorm bootstrap intervals are not computed; the *All selected data* AUC with equal-observation weighting reproduces the
+  point estimate used in the manuscript.
+- One deliberate difference from the lab's R explorer: genotype labels are kept as recorded (the R explorer renames a legacy JHU label); `tools/make_fixtures.R` applies the same to its reference inputs.
+- `tools/make_fixtures.R` expects the lab's R explorer sources next to this folder; it is a development tool only.
+- To cite a fixed version, use the archived release (DOI to be added).

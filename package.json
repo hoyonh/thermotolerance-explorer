@@ -1,0 +1,23 @@
+{
+  "name": "thermotolerance-explorer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/unit.mjs && node tests/numerical.mjs && node tests/modules.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "test:safari": "THERMO_ENGINE=webkit node tests/browser.mjs",
+    "preview": "python3 tools/preview.py --open",
+    "fixtures": "Rscript --vanilla tools/make_fixtures.R",
+    "test:bundled": "node tests/bundled.mjs",
+    "test:bundled:safari": "THERMO_ENGINE=webkit node tests/bundled.mjs",
+    "test:manuscript": "node tests/manuscript_auc.mjs",
+    "test:rowfx": "node tests/rowfx.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}
